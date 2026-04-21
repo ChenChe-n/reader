@@ -26,6 +26,7 @@
       <div v-if="preview.kind === 'notice'" class="notice">{{ preview.message }}</div>
       <article v-else-if="preview.kind === 'markdown'" class="markdown" v-html="preview.html"></article>
       <pre v-else-if="preview.kind === 'code'" class="code-view">{{ preview.text }}</pre>
+      <LineTextViewer v-else-if="preview.kind === 'lineText' && preview.lineText" ref="lineViewerRef" :document="preview.lineText" />
       <iframe v-else-if="preview.kind === 'html'" class="html-frame" :srcdoc="preview.html" :sandbox="preview.sandbox || iframeSandbox"></iframe>
       <div v-else-if="preview.kind === 'media'" class="media-stage">
         <img v-if="preview.mediaKind === 'image'" :src="preview.url" :alt="preview.fileName" />
@@ -58,6 +59,7 @@ import { isAnchorOnly, shouldResolveLocalResource } from "../api/localFiles";
 import type { FileSystemDirectoryHandleLike, PreviewState, PreviewTiming } from "../types";
 import { rewriteRelativeResources } from "../utils/resourceRewriter";
 import IconView from "./IconView.vue";
+import LineTextViewer from "./LineTextViewer.vue";
 
 const props = defineProps<{
   preview: PreviewState;
@@ -81,6 +83,7 @@ const emit = defineEmits<{
 }>();
 
 const contentRef = ref<HTMLElement | null>(null);
+const lineViewerRef = ref<InstanceType<typeof LineTextViewer> | null>(null);
 const iframeSandbox = "allow-forms allow-popups allow-same-origin allow-scripts allow-modals";
 const fullscreenTip = computed(() => (props.isPreviewMaximized ? "还原预览" : "最大化预览"));
 const readTimingLabel = computed(() => formatDuration(props.previewTiming.readMs));
@@ -91,6 +94,10 @@ const processTimingLabel = computed(() => formatDuration(props.previewTiming.pro
  * @returns 无返回值。
  */
 function scrollToTop(): void {
+  if (props.preview.kind === "lineText") {
+    lineViewerRef.value?.scrollToTop();
+    return;
+  }
   contentRef.value?.scrollTo({ top: 0, behavior: "smooth" });
 }
 

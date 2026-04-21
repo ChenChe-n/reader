@@ -32,8 +32,18 @@ export interface RelativeFileResult {
   directoryPath: string[];
 }
 
+export interface LineTextLine {
+  data: string;
+  style: Record<string, string>;
+}
+
+export interface LineTextDocument {
+  lines: Record<string, LineTextLine>;
+  lineCount: number;
+}
+
 export interface PreviewState {
-  kind: "empty" | "notice" | "markdown" | "code" | "html" | "media";
+  kind: "empty" | "notice" | "markdown" | "code" | "html" | "media" | "lineText";
   title?: string;
   message?: string;
   html?: string;
@@ -42,6 +52,7 @@ export interface PreviewState {
   url?: string;
   fileName?: string;
   sandbox?: string;
+  lineText?: LineTextDocument;
 }
 
 export interface PreviewTiming {

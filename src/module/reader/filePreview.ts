@@ -1,3 +1,4 @@
+import { markRaw } from "vue";
 import type { FileSystemFileHandleLike, PreviewState } from "../../types";
 import { extensionOf, fileKindLabel, isAudioFile, isImageFile, isVideoFile } from "../../utils/fileKind";
 import { formatBytes } from "../../utils/format";
@@ -72,7 +73,7 @@ export function createFilePreviewActions(context: FilePreviewContext) {
   ): Promise<boolean> {
     if (["md", "markdown"].includes(ext)) return renderTextFile(file, ext, "markdown", session);
     if (ext === "txt" || file.type.startsWith("text/plain")) return renderTextFile(file, ext, "text", session);
-    if (ext === "json" || file.type === "application/json") return renderTextFile(file, ext, "text", session);
+    if (ext === "json" || file.type === "application/json") return renderTextFile(file, ext, "json", session);
     if (ext === "html" || ext === "htm" || file.type === "text/html") return renderTextFile(file, ext, "html", session);
     if (isImageFile(file, ext)) return renderMediaFile(file, "image");
     if (isVideoFile(file, ext)) return renderMediaFile(file, "video");
@@ -135,6 +136,7 @@ export function createFilePreviewActions(context: FilePreviewContext) {
     context.urlStore.clear();
     const suffixes = [result.meta, result.encoding ? `编码 ${result.encoding}` : ""].filter(Boolean);
     const meta = suffixes.length ? `${baseMeta(file, ext)} · ${suffixes.join(" · ")}` : undefined;
+    if (result.preview.lineText) result.preview.lineText = markRaw(result.preview.lineText);
     commitPreview(file, ext, result.currentText, result.preview, meta);
   }
 

@@ -1,4 +1,3 @@
-import { marked } from "marked";
 import type { PreviewState } from "../../types";
 
 declare const FileReaderSync: {
@@ -26,7 +25,7 @@ interface DecodeResult {
   encoding: string;
 }
 
-marked.setOptions({ gfm: true, breaks: false });
+const MAX_LINE_LENGTH = 4096;
 
 self.onmessage = event => {
   try {
@@ -73,45 +72,48 @@ function buildPreview(file: File, mode: WorkerRequest["mode"]): WorkerResult {
  * @returns 预览和当前文本。
  */
 function previewForMode(text: string, mode: WorkerRequest["mode"]): Pick<WorkerResult, "preview" | "currentText" | "meta"> {
-  if (mode === "markdown") return { preview: markdownPreview(text), currentText: text };
-  if (mode === "json") return jsonPreview(text);
   if (mode === "html") return { preview: { kind: "html", html: text }, currentText: text };
-  return { preview: { kind: "code", text }, currentText: text };
+  return { preview: lineTextPreview(text), currentText: "", meta: lineTextMeta(mode) };
 }
 
 /**
- * 创建沙箱 Markdown 预览。
- * @param text Markdown 源码。
- * @returns HTML iframe 预览。
+ * 创建行文本预览。
+ * @param text 文本内容。
+ * @returns 行文本预览。
  */
-function markdownPreview(text: string): PreviewState {
-  return {
-    kind: "html",
-    html: `<!doctype html><html><head><meta charset="utf-8"><style>${markdownCss()}</style></head><body class="markdown">${marked.parse(text) as string}</body></html>`,
-    sandbox: "allow-popups"
+function lineTextPreview(text: string): PreviewState {
+  const lines: Record<string, { data: string; style: Record<string, string> }> = {};
+  let index = 0;
+  text.split(/\r\n|\n|\r/).forEach((line, sourceLine) => {
+    if (!line) {
+      lines[String(index)] = { data: "", style: { "--source-line": String(sourceLine), "--chunk": "0" } };
+      index += 1;
+      return;
+    }
+    for (let offset = 0; offset < line.length; offset += MAX_LINE_LENGTH) {
+      lines[String(index)] = {
+        data: line.slice(offset, offset + MAX_LINE_LENGTH),
+        style: { "--source-line": String(sourceLine), "--chunk": String(offset / MAX_LINE_LENGTH) }
+      };
+      index += 1;
+    }
+  });
+  return { kind: "lineText", lineText: { lines, lineCount: index } };
+}
+
+/**
+ * 生成行文本模式元信息。
+ * @param mode 预览模式。
+ * @returns 元信息文本。
+ */
+function lineTextMeta(mode: WorkerRequest["mode"]): string {
+  const labels: Record<string, string> = {
+    markdown: "Markdown 行文本",
+    json: "JSON 行文本",
+    text: "文本行",
+    fallback: "文本行"
   };
-}
-
-/**
- * 返回 Markdown iframe 基础样式。
- * @returns CSS 文本。
- */
-function markdownCss(): string {
-  return "body{margin:0;padding:28px;font:15px/1.7 system-ui,-apple-system,Segoe UI,Microsoft YaHei,sans-serif;color:#1f2937;background:#fff}.markdown{max-width:980px;margin:0 auto}.markdown img{max-width:100%}.markdown pre{overflow:auto;padding:14px;border:1px solid #d8e2ef;border-radius:8px;background:#f7f9fc}.markdown code{font-family:Consolas,monospace}.markdown table{border-collapse:collapse;width:100%}.markdown th,.markdown td{border:1px solid #d9e2ef;padding:8px}.markdown blockquote{margin-left:0;padding-left:14px;border-left:4px solid #d9e2ef;color:#64748b}";
-}
-
-/**
- * 创建 JSON 预览。
- * @param text JSON 或普通文本。
- * @returns 预览和元信息。
- */
-function jsonPreview(text: string): Pick<WorkerResult, "preview" | "currentText" | "meta"> {
-  try {
-    const formatted = JSON.stringify(JSON.parse(text), null, 2);
-    return { preview: { kind: "code", text: formatted }, currentText: formatted };
-  } catch {
-    return { preview: { kind: "code", text }, currentText: text, meta: "JSON 解析失败，已按纯文本显示" };
-  }
+  return labels[mode] || "文本行";
 }
 
 /**
