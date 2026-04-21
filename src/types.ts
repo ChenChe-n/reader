@@ -43,18 +43,13 @@ export interface LineTextDocument {
   lineCount: number;
 }
 
-export interface PreviewState {
-  kind: "empty" | "notice" | "markdown" | "code" | "html" | "media" | "lineText";
-  title?: string;
-  message?: string;
-  html?: string;
-  text?: string;
-  mediaKind?: "image" | "video" | "audio";
-  url?: string;
-  fileName?: string;
-  sandbox?: string;
-  lineText?: LineTextDocument;
-}
+export type PreviewState =
+  | { kind: "empty"; title?: string; message?: string; html?: string }
+  | { kind: "notice"; message?: string }
+  | { kind: "markdown"; html?: string }
+  | { kind: "html"; html?: string; sandbox?: string }
+  | { kind: "media"; mediaKind?: "image" | "video" | "audio"; url?: string; fileName?: string }
+  | { kind: "lineText"; lineText: LineTextDocument };
 
 export interface PreviewTiming {
   readMs: number;

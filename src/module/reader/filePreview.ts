@@ -136,7 +136,7 @@ export function createFilePreviewActions(context: FilePreviewContext) {
     context.urlStore.clear();
     const suffixes = [result.meta, result.encoding ? `编码 ${result.encoding}` : ""].filter(Boolean);
     const meta = suffixes.length ? `${baseMeta(file, ext)} · ${suffixes.join(" · ")}` : undefined;
-    if (result.preview.lineText) result.preview.lineText = markRaw(result.preview.lineText);
+    if (result.preview.kind === "lineText") result.preview.lineText = markRaw(result.preview.lineText);
     commitPreview(file, ext, result.currentText, result.preview, meta);
   }
 

@@ -25,15 +25,14 @@
     <div ref="contentRef" class="content" @click="handleContentClick">
       <div v-if="preview.kind === 'notice'" class="notice">{{ preview.message }}</div>
       <article v-else-if="preview.kind === 'markdown'" class="markdown" v-html="preview.html"></article>
-      <pre v-else-if="preview.kind === 'code'" class="code-view">{{ preview.text }}</pre>
-      <LineTextViewer v-else-if="preview.kind === 'lineText' && preview.lineText" ref="lineViewerRef" :document="preview.lineText" />
+      <LineTextViewer v-else-if="preview.kind === 'lineText'" ref="lineViewerRef" :document="preview.lineText" />
       <iframe v-else-if="preview.kind === 'html'" class="html-frame" :srcdoc="preview.html" :sandbox="preview.sandbox || iframeSandbox"></iframe>
       <div v-else-if="preview.kind === 'media'" class="media-stage">
         <img v-if="preview.mediaKind === 'image'" :src="preview.url" :alt="preview.fileName" />
         <video v-else-if="preview.mediaKind === 'video'" :src="preview.url" controls playsinline></video>
         <audio v-else :src="preview.url" controls></audio>
       </div>
-      <div v-else class="empty">
+      <div v-else-if="preview.kind === 'empty'" class="empty">
         <div class="empty-inner">
           <div class="empty-icon"><IconView name="dir-search" /></div>
           <h2>{{ preview.title }}</h2>
@@ -137,7 +136,7 @@ function handlePreviewMessage(event: MessageEvent): void {
 }
 
 watch(
-  () => props.preview.html,
+  () => (props.preview.kind === "markdown" ? props.preview.html : ""),
   async () => {
     if (props.preview.kind !== "markdown") return;
     await nextTick();
