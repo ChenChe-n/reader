@@ -45,14 +45,5 @@ export function createViewStateActions(context: ReaderViewContext) {
     context.setPreview(noticePreview(message));
   }
 
-  /**
-   * 在文件元信息末尾追加内容。
-   * @param text 追加文本。
-   * @returns 无返回值。
-   */
-  function appendFileMeta(text: string): void {
-    context.fileMeta.value = `${context.fileMeta.value} · ${text}`;
-  }
-
-  return { showEmpty, showNotice, appendFileMeta };
+  return { showEmpty, showNotice };
 }
