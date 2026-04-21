@@ -24,13 +24,15 @@ const overscan = 16;
 const scrollerRef = ref<HTMLElement | null>(null);
 const scrollTop = ref(0);
 const viewportHeight = ref(0);
-const totalHeight = computed(() => props.document.lineCount * rowHeight);
-const startIndex = computed(() => Math.max(Math.floor(scrollTop.value / rowHeight) - overscan, 0));
+const scrollPadding = computed(() => Math.max(viewportHeight.value - rowHeight, 0));
+const totalHeight = computed(() => props.document.lineCount * rowHeight + scrollPadding.value * 2);
+const contentScrollTop = computed(() => Math.max(scrollTop.value - scrollPadding.value, 0));
+const startIndex = computed(() => Math.max(Math.floor(contentScrollTop.value / rowHeight) - overscan, 0));
 const endIndex = computed(() => {
   const visibleCount = Math.ceil(viewportHeight.value / rowHeight) + overscan * 2;
   return Math.min(startIndex.value + visibleCount, props.document.lineCount);
 });
-const offsetY = computed(() => startIndex.value * rowHeight);
+const offsetY = computed(() => scrollPadding.value + startIndex.value * rowHeight);
 const visibleLines = computed(() => {
   const rows: Array<{ index: number; number: number; data: string; style: Record<string, string> }> = [];
   for (let index = startIndex.value; index < endIndex.value; index += 1) {
