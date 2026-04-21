@@ -19,20 +19,26 @@ const props = defineProps<{
   document: LineTextDocument;
 }>();
 
+const maxPhysicalHeight = 8_000_000;
 const rowHeight = 22;
 const overscan = 16;
 const scrollerRef = ref<HTMLElement | null>(null);
 const scrollTop = ref(0);
 const viewportHeight = ref(0);
-const spacerLineCount = computed(() => Math.max(Math.ceil(viewportHeight.value / rowHeight), 1));
+const visibleRowCount = computed(() => Math.max(Math.ceil(viewportHeight.value / rowHeight), 1));
+const spacerLineCount = computed(() => Math.max(visibleRowCount.value - 1, 1));
 const totalLineCount = computed(() => props.document.lineCount + spacerLineCount.value);
-const totalHeight = computed(() => totalLineCount.value * rowHeight);
-const startIndex = computed(() => Math.max(Math.floor(scrollTop.value / rowHeight) - overscan, 0));
+const totalLogicalHeight = computed(() => totalLineCount.value * rowHeight);
+const totalHeight = computed(() => Math.min(totalLogicalHeight.value, maxPhysicalHeight));
+const physicalScrollRange = computed(() => Math.max(totalHeight.value - viewportHeight.value, 0));
+const maxTopIndex = computed(() => Math.max(totalLineCount.value - visibleRowCount.value, 0));
+const scrollRatio = computed(() => (physicalScrollRange.value ? scrollTop.value / physicalScrollRange.value : 0));
+const topIndex = computed(() => Math.min(Math.round(scrollRatio.value * maxTopIndex.value), maxTopIndex.value));
+const startIndex = computed(() => Math.max(topIndex.value - overscan, 0));
 const endIndex = computed(() => {
-  const visibleCount = Math.ceil(viewportHeight.value / rowHeight) + overscan * 2;
-  return Math.min(startIndex.value + visibleCount, totalLineCount.value);
+  return Math.min(topIndex.value + visibleRowCount.value + overscan, totalLineCount.value);
 });
-const offsetY = computed(() => startIndex.value * rowHeight);
+const offsetY = computed(() => Math.max(scrollTop.value - (topIndex.value - startIndex.value) * rowHeight, 0));
 const visibleLines = computed(() => {
   const rows: Array<{ index: number; number: string; data: string; style: Record<string, string>; spacer: boolean }> = [];
   for (let index = startIndex.value; index < endIndex.value; index += 1) {
