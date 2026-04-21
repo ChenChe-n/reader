@@ -43,6 +43,32 @@ export interface PreviewState {
   fileName?: string;
 }
 
+export type ReaderIconName =
+  | "dir-default"
+  | "dir-open"
+  | "dir-search"
+  | "file-archive"
+  | "file-audio"
+  | "file-code"
+  | "file-default"
+  | "file-image"
+  | "file-json"
+  | "file-plain"
+  | "file-search"
+  | "file-text"
+  | "file-video"
+  | "ico-back"
+  | "ico-copy"
+  | "ico-download"
+  | "ico-drive"
+  | "ico-home"
+  | "ico-maximize"
+  | "ico-minimize"
+  | "ico-panel-close"
+  | "ico-panel-open"
+  | "ico-refresh"
+  | "ico-up";
+
 declare global {
   interface Window {
     showDirectoryPicker?: (options?: { mode?: "read" | "readwrite" }) => Promise<FileSystemDirectoryHandleLike>;

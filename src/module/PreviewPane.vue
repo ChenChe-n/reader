@@ -2,7 +2,7 @@
   <section class="viewer">
     <div class="viewer-head">
       <button class="button icon-only viewer-expand-toggle" title="展开文件区" @click="$emit('expand')">
-        <IconView name="panel-left-open" />
+        <IconView name="ico-panel-open" />
       </button>
       <div class="file-title">
         <strong>{{ fileTitle }}</strong>
@@ -10,10 +10,10 @@
       </div>
       <div class="viewer-actions">
         <button class="button icon-only" title="复制文本内容" :disabled="!hasText" @click="$emit('copy')">
-          <IconView name="copy" />
+          <IconView name="ico-copy" />
         </button>
         <button class="button icon-only" title="下载当前文件" :disabled="!hasFile" @click="$emit('download')">
-          <IconView name="download" />
+          <IconView name="ico-download" />
         </button>
       </div>
     </div>
@@ -30,7 +30,7 @@
       </div>
       <div v-else class="empty">
         <div class="empty-inner">
-          <div class="empty-icon"><IconView name="folder-search" /></div>
+          <div class="empty-icon"><IconView name="dir-search" /></div>
           <h2>{{ preview.title }}</h2>
           <p>{{ preview.message }}</p>
         </div>
@@ -39,10 +39,10 @@
 
     <div class="preview-corner-actions">
       <button class="svg-action" type="button" data-tooltip="返回顶部" aria-label="返回顶部" @click="scrollToTop">
-        <IconView name="arrow-up" />
+        <IconView name="ico-up" />
       </button>
       <button class="svg-action" type="button" :data-tooltip="fullscreenTip" :aria-label="fullscreenTip" @click="$emit('toggle-fullscreen')">
-        <IconView :name="isPreviewMaximized ? 'minimize' : 'maximize'" />
+        <IconView :name="isPreviewMaximized ? 'ico-minimize' : 'ico-maximize'" />
       </button>
     </div>
   </section>

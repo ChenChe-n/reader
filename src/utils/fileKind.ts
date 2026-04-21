@@ -1,4 +1,4 @@
-import type { LocalEntry } from "../types";
+import type { LocalEntry, ReaderIconName } from "../types";
 
 const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif", "apng"];
 const VIDEO_EXTENSIONS = ["mp4", "webm", "ogg", "ogv", "mov", "m4v"];
@@ -17,27 +17,27 @@ export function extensionOf(name: string): string {
 /**
  * 获取列表项的图标名称。
  * @param item 文件或目录项。
- * @returns lucide 图标名称。
+ * @returns 项目内部图标名称。
  */
-export function iconFor(item: LocalEntry): string {
-  return item.kind === "directory" ? "folder" : iconForExtension(extensionOf(item.name));
+export function iconFor(item: LocalEntry): ReaderIconName {
+  return item.kind === "directory" ? "dir-default" : iconForExtension(extensionOf(item.name));
 }
 
 /**
- * 按后缀获取 lucide 图标名称。
+ * 按后缀获取项目内部图标名称。
  * @param ext 文件后缀。
- * @returns lucide 图标名称。
+ * @returns 项目内部图标名称。
  */
-export function iconForExtension(ext: string): string {
+export function iconForExtension(ext: string): ReaderIconName {
   if (["md", "markdown"].includes(ext)) return "file-text";
-  if (ext === "json") return "braces";
-  if (["html", "htm"].includes(ext)) return "file-code-2";
-  if (ext === "txt") return "file-type";
-  if (IMAGE_EXTENSIONS.includes(ext)) return "image";
+  if (ext === "json") return "file-json";
+  if (["html", "htm"].includes(ext)) return "file-code";
+  if (ext === "txt") return "file-plain";
+  if (IMAGE_EXTENSIONS.includes(ext)) return "file-image";
   if (VIDEO_EXTENSIONS.includes(ext)) return "file-video";
   if (AUDIO_EXTENSIONS.includes(ext)) return "file-audio";
-  if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) return "archive";
-  return "file";
+  if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) return "file-archive";
+  return "file-default";
 }
 
 /**

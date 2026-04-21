@@ -30,35 +30,36 @@ import {
   ArrowUp
 } from "lucide-vue-next";
 import { computed } from "vue";
+import type { ReaderIconName } from "../types";
 
-const props = defineProps<{ name: string }>();
+const props = defineProps<{ name: ReaderIconName }>();
 
 const icons = {
-  archive: Archive,
-  braces: Braces,
-  copy: Copy,
-  "corner-up-left": CornerUpLeft,
-  download: Download,
-  file: File,
+  "dir-default": Folder,
+  "dir-open": FolderOpen,
+  "dir-search": FolderSearch,
+  "file-archive": Archive,
   "file-audio": FileAudio,
-  "file-code-2": FileCode2,
+  "file-code": FileCode2,
+  "file-default": File,
+  "file-image": Image,
+  "file-json": Braces,
+  "file-plain": FileType,
   "file-search": FileSearch,
   "file-text": FileText,
-  "file-type": FileType,
   "file-video": FileVideo,
-  folder: Folder,
-  "folder-open": FolderOpen,
-  "folder-search": FolderSearch,
-  "hard-drive": HardDrive,
-  home: Home,
-  image: Image,
-  maximize: Maximize,
-  minimize: Minimize,
-  "panel-left-close": PanelLeftClose,
-  "panel-left-open": PanelLeftOpen,
-  "refresh-cw": RefreshCw,
-  "arrow-up": ArrowUp
+  "ico-back": CornerUpLeft,
+  "ico-copy": Copy,
+  "ico-download": Download,
+  "ico-drive": HardDrive,
+  "ico-home": Home,
+  "ico-maximize": Maximize,
+  "ico-minimize": Minimize,
+  "ico-panel-close": PanelLeftClose,
+  "ico-panel-open": PanelLeftOpen,
+  "ico-refresh": RefreshCw,
+  "ico-up": ArrowUp
 };
 
-const iconComponent = computed(() => icons[props.name as keyof typeof icons] || File);
+const iconComponent = computed(() => icons[props.name] || File);
 </script>

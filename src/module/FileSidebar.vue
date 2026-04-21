@@ -3,27 +3,27 @@
     <div class="sidebar-head">
       <div class="nav-row">
         <button class="button" title="返回上一级" :disabled="!canGoUp" @click="$emit('go-up')">
-          <IconView name="corner-up-left" />
+          <IconView name="ico-back" />
           返回上一级
         </button>
         <button class="button icon-only" title="刷新当前目录" :disabled="!hasRoot" @click="$emit('reload')">
-          <IconView name="refresh-cw" />
+          <IconView name="ico-refresh" />
         </button>
         <button class="button icon-only" title="选择文件夹" @click="$emit('open-directory')">
-          <IconView name="folder-open" />
+          <IconView name="dir-open" />
         </button>
         <button class="button icon-only" title="回到根目录" :disabled="!hasRoot" @click="$emit('home')">
-          <IconView name="home" />
+          <IconView name="ico-home" />
         </button>
         <button class="button icon-only collapse-toggle" title="折叠文件区" @click="$emit('collapse')">
-          <IconView name="panel-left-close" />
+          <IconView name="ico-panel-close" />
         </button>
       </div>
       <input v-model="keywordModel" class="search" type="search" placeholder="筛选文件或文件夹" />
     </div>
 
     <div class="crumbs">
-      <IconView name="hard-drive" />
+      <IconView name="ico-drive" />
       <span>{{ pathLabel }}</span>
     </div>
 
