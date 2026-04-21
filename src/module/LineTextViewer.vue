@@ -24,7 +24,7 @@ const overscan = 16;
 const scrollerRef = ref<HTMLElement | null>(null);
 const scrollTop = ref(0);
 const viewportHeight = ref(0);
-const bottomScrollPadding = computed(() => Math.max(viewportHeight.value - rowHeight, 0));
+const bottomScrollPadding = computed(() => Math.max(viewportHeight.value, rowHeight));
 const totalHeight = computed(() => props.document.lineCount * rowHeight + bottomScrollPadding.value);
 const startIndex = computed(() => Math.max(Math.floor(scrollTop.value / rowHeight) - overscan, 0));
 const endIndex = computed(() => {
