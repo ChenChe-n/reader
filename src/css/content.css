@@ -82,6 +82,7 @@
 }
 
 .line-text-viewer {
+  position: relative;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -109,6 +110,7 @@
 .line-text-window {
   position: absolute;
   inset: 0 0 auto;
+  z-index: 1;
 }
 
 .line-text-row {
@@ -142,4 +144,30 @@
 
 .line-text-row-spacer .line-text-data {
   visibility: hidden;
+}
+
+.line-scrollbar {
+  position: absolute;
+  z-index: 3;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  background: rgba(100, 116, 139, 0.42);
+  cursor: pointer;
+}
+
+.line-scrollbar:hover {
+  background: rgba(37, 99, 235, 0.62);
+}
+
+.line-scrollbar-y {
+  top: 0;
+  right: 3px;
+  width: 8px;
+}
+
+.line-scrollbar-x {
+  left: 0;
+  bottom: 3px;
+  height: 8px;
 }
