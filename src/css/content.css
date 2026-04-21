@@ -84,13 +84,21 @@
 .line-text-viewer {
   height: 100%;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
   font-family: Consolas, "Courier New", monospace;
   font-size: 13px;
   line-height: 22px;
+  cursor: default;
+  user-select: text;
+  --line-text-x: 0px;
+}
+
+.line-text-panning {
+  cursor: move;
+  user-select: none;
 }
 
 .line-text-spacer {
@@ -125,6 +133,7 @@
 .line-text-data {
   padding: 0 12px;
   white-space: pre;
+  transform: translateX(calc(-1 * var(--line-text-x)));
 }
 
 .line-text-row-spacer .line-text-number {
