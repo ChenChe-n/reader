@@ -4,6 +4,10 @@
       <button class="button icon-only viewer-expand-toggle" title="展开文件区" @click="$emit('expand')">
         <IconView name="ico-panel-open" />
       </button>
+      <div v-if="hasFile" class="preview-timing" aria-label="预览加载用时">
+        <span>读取 {{ readTimingLabel }}</span>
+        <span>处理 {{ processTimingLabel }}</span>
+      </div>
       <div class="file-title">
         <strong>{{ fileTitle }}</strong>
         <span>{{ fileMeta }}</span>
@@ -22,7 +26,7 @@
       <div v-if="preview.kind === 'notice'" class="notice">{{ preview.message }}</div>
       <article v-else-if="preview.kind === 'markdown'" class="markdown" v-html="preview.html"></article>
       <pre v-else-if="preview.kind === 'code'" class="code-view">{{ preview.text }}</pre>
-      <iframe v-else-if="preview.kind === 'html'" class="html-frame" :srcdoc="preview.html" :sandbox="iframeSandbox"></iframe>
+      <iframe v-else-if="preview.kind === 'html'" class="html-frame" :srcdoc="preview.html" :sandbox="preview.sandbox || iframeSandbox"></iframe>
       <div v-else-if="preview.kind === 'media'" class="media-stage">
         <img v-if="preview.mediaKind === 'image'" :src="preview.url" :alt="preview.fileName" />
         <video v-else-if="preview.mediaKind === 'video'" :src="preview.url" controls playsinline></video>
@@ -51,7 +55,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { isAnchorOnly, shouldResolveLocalResource } from "../api/localFiles";
-import type { FileSystemDirectoryHandleLike, PreviewState } from "../types";
+import type { FileSystemDirectoryHandleLike, PreviewState, PreviewTiming } from "../types";
 import { rewriteRelativeResources } from "../utils/resourceRewriter";
 import IconView from "./IconView.vue";
 
@@ -59,6 +63,7 @@ const props = defineProps<{
   preview: PreviewState;
   fileTitle: string;
   fileMeta: string;
+  previewTiming: PreviewTiming;
   hasText: boolean;
   hasFile: boolean;
   isPreviewMaximized: boolean;
@@ -78,6 +83,8 @@ const emit = defineEmits<{
 const contentRef = ref<HTMLElement | null>(null);
 const iframeSandbox = "allow-forms allow-popups allow-same-origin allow-scripts allow-modals";
 const fullscreenTip = computed(() => (props.isPreviewMaximized ? "还原预览" : "最大化预览"));
+const readTimingLabel = computed(() => formatDuration(props.previewTiming.readMs));
+const processTimingLabel = computed(() => formatDuration(props.previewTiming.processMs));
 
 /**
  * 滚动预览区域到顶部。
@@ -85,6 +92,17 @@ const fullscreenTip = computed(() => (props.isPreviewMaximized ? "还原预览" 
  */
 function scrollToTop(): void {
   contentRef.value?.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/**
+ * 格式化预览用时。
+ * @param milliseconds 原始毫秒数。
+ * @returns 展示用时文本。
+ */
+function formatDuration(milliseconds: number): string {
+  if (milliseconds >= 1000) return `${(milliseconds / 1000).toFixed(2)} s`;
+  if (milliseconds >= 10) return `${milliseconds.toFixed(0)} ms`;
+  return `${milliseconds.toFixed(1)} ms`;
 }
 
 /**

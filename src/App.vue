@@ -31,6 +31,7 @@
         :preview="preview"
         :file-title="fileTitle"
         :file-meta="fileMeta"
+        :preview-timing="previewTiming"
         :has-text="Boolean(currentText)"
         :has-file="Boolean(currentFile)"
         :is-preview-maximized="previewMaximized"
@@ -44,12 +45,20 @@
         @open-relative="openRelative"
       />
     </main>
+    <ConfirmDialog
+      :visible="confirmDialog.visible"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      @confirm="resolveConfirmDialog(true)"
+      @cancel="resolveConfirmDialog(false)"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useReader } from "./module/useReader";
+import ConfirmDialog from "./module/ConfirmDialog.vue";
 import FileSidebar from "./module/FileSidebar.vue";
 import PreviewPane from "./module/PreviewPane.vue";
 
@@ -65,6 +74,8 @@ const {
   preview,
   fileTitle,
   fileMeta,
+  previewTiming,
+  confirmDialog,
   pathLabel,
   rootHandle,
   openDirectory,
@@ -74,7 +85,8 @@ const {
   goHome,
   copyCurrentText,
   downloadCurrentFile,
-  createObjectUrl
+  createObjectUrl,
+  resolveConfirmDialog
 } = reader;
 const layoutRef = ref<HTMLElement | null>(null);
 const resizerRef = ref<HTMLButtonElement | null>(null);

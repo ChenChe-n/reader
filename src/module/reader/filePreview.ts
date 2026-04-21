@@ -1,10 +1,20 @@
 import type { FileSystemFileHandleLike, PreviewState } from "../../types";
 import { extensionOf, fileKindLabel, isAudioFile, isImageFile, isVideoFile } from "../../utils/fileKind";
 import { formatBytes } from "../../utils/format";
-import { readPlainTextIfPossible, readTextWithEncoding } from "../../utils/textReader";
-import { codePreview, htmlPreview, jsonPreview, markdownPreview, mediaPreview, unsupportedPreview } from "../../utils/previewFactory";
-import { createViewStateActions } from "./viewState";
+import { mediaPreview } from "../../utils/previewFactory";
+import { CanceledPreviewLoad, createPreviewLoadSession, type PreviewLoadSession } from "./loadSession";
 import type { FilePreviewContext } from "./types";
+
+type WorkerMode = "markdown" | "text" | "json" | "html" | "fallback";
+
+interface WorkerPreviewResult {
+  preview: PreviewState;
+  currentText: string;
+  meta?: string;
+  encoding?: string;
+  readMs: number;
+  processMs: number;
+}
 
 /**
  * 创建文件打开和预览操作。
@@ -12,8 +22,6 @@ import type { FilePreviewContext } from "./types";
  * @returns 文件打开函数。
  */
 export function createFilePreviewActions(context: FilePreviewContext) {
-  const { appendFileMeta } = createViewStateActions(context);
-
   /**
    * 打开文件并选择合适的预览器。
    * @param name 文件名。
@@ -21,11 +29,18 @@ export function createFilePreviewActions(context: FilePreviewContext) {
    * @returns 异步完成信号。
    */
   async function openFile(name: string, handle: FileSystemFileHandleLike): Promise<void> {
-    const file = await handle.getFile();
-    const ext = extensionOf(file.name || name);
-    setCurrentFile(file, ext);
-    if (await renderKnownFile(file, ext)) return;
-    await renderFallbackText(file, ext);
+    context.cancelLargeTextConfirm();
+    const session = createPreviewLoadSession(context);
+    try {
+      const file = await session.measureRead(() => handle.getFile());
+      const ext = extensionOf(file.name || name);
+      if (await renderKnownFile(file, ext, session)) {
+        return;
+      }
+      await renderFallbackText(file, ext, session);
+    } catch (error) {
+      if (!isCanceledLoad(error)) throw error;
+    }
   }
 
   /**
@@ -34,13 +49,14 @@ export function createFilePreviewActions(context: FilePreviewContext) {
    * @param ext 文件后缀。
    * @returns 无返回值。
    */
-  function setCurrentFile(file: File, ext: string): void {
-    context.urlStore.clear();
+  function commitPreview(file: File, ext: string, text: string, preview: PreviewState, meta?: string): void {
     context.currentFile.value = file;
-    context.currentText.value = "";
+    context.currentText.value = text;
     context.currentFileDirectoryPath.value = context.stack.value.slice(1);
     context.fileTitle.value = file.name;
     context.fileMeta.value = `${formatBytes(file.size)} · ${file.type || fileKindLabel(ext)} · ${new Date(file.lastModified).toLocaleString()}`;
+    if (meta) context.fileMeta.value = meta;
+    context.setPreview(preview);
   }
 
   /**
@@ -49,11 +65,15 @@ export function createFilePreviewActions(context: FilePreviewContext) {
    * @param ext 文件后缀。
    * @returns 是否已完成渲染。
    */
-  async function renderKnownFile(file: File, ext: string): Promise<boolean> {
-    if (["md", "markdown"].includes(ext)) return renderTextFile(file, markdownPreview);
-    if (ext === "txt" || file.type.startsWith("text/plain")) return renderTextFile(file, text => codePreview(text));
-    if (ext === "json" || file.type === "application/json") return renderJsonFile(file);
-    if (ext === "html" || ext === "htm" || file.type === "text/html") return renderHtmlFile(file);
+  async function renderKnownFile(
+    file: File,
+    ext: string,
+    session: PreviewLoadSession
+  ): Promise<boolean> {
+    if (["md", "markdown"].includes(ext)) return renderTextFile(file, ext, "markdown", session);
+    if (ext === "txt" || file.type.startsWith("text/plain")) return renderTextFile(file, ext, "text", session);
+    if (ext === "json" || file.type === "application/json") return renderTextFile(file, ext, "text", session);
+    if (ext === "html" || ext === "htm" || file.type === "text/html") return renderTextFile(file, ext, "html", session);
     if (isImageFile(file, ext)) return renderMediaFile(file, "image");
     if (isVideoFile(file, ext)) return renderMediaFile(file, "video");
     if (isAudioFile(file, ext)) return renderMediaFile(file, "audio");
@@ -66,40 +86,10 @@ export function createFilePreviewActions(context: FilePreviewContext) {
    * @param buildPreview 文本预览构造器。
    * @returns 始终返回 true。
    */
-  async function renderTextFile(file: File, buildPreview: (text: string) => PreviewState | Promise<PreviewState>): Promise<boolean> {
-    const result = await readTextWithEncoding(file);
-    context.currentText.value = result.text;
-    appendFileMeta(`编码 ${result.encoding}`);
-    context.setPreview(await buildPreview(result.text));
-    return true;
-  }
-
-  /**
-   * 渲染 JSON 文件。
-   * @param file 当前文件。
-   * @returns 始终返回 true。
-   */
-  async function renderJsonFile(file: File): Promise<boolean> {
-    const result = await readTextWithEncoding(file);
-    appendFileMeta(`编码 ${result.encoding}`);
-    const json = jsonPreview(result.text);
-    context.currentText.value = json.currentText;
-    if (json.meta) context.fileMeta.value = json.meta;
-    context.setPreview(json.preview);
-    return true;
-  }
-
-  /**
-   * 渲染 HTML 文件。
-   * @param file 当前文件。
-   * @returns 始终返回 true。
-   */
-  async function renderHtmlFile(file: File): Promise<boolean> {
-    const result = await readTextWithEncoding(file);
-    context.currentText.value = result.text;
-    appendFileMeta(`编码 ${result.encoding}`);
-    const preview = await htmlPreview(result.text, context.rootHandle.value, context.currentFileDirectoryPath.value, context.urlStore.create);
-    context.setPreview(preview);
+  async function renderTextFile(file: File, ext: string, mode: WorkerMode, session: PreviewLoadSession): Promise<boolean> {
+    if (!(await session.confirmTextRead(file))) return cancelCurrentFile();
+    const result = await session.runWorker<WorkerPreviewResult>(file, mode);
+    commitWorkerResult(file, ext, result, session);
     return true;
   }
 
@@ -110,7 +100,9 @@ export function createFilePreviewActions(context: FilePreviewContext) {
    * @returns 始终返回 true。
    */
   function renderMediaFile(file: File, kind: "image" | "video" | "audio"): boolean {
-    context.setPreview(mediaPreview(file, kind, context.urlStore.create(file)));
+    context.urlStore.clear();
+    const preview = mediaPreview(file, kind, context.urlStore.create(file));
+    commitPreview(file, extensionOf(file.name), "", preview);
     return true;
   }
 
@@ -120,15 +112,58 @@ export function createFilePreviewActions(context: FilePreviewContext) {
    * @param ext 文件后缀。
    * @returns 异步完成信号。
    */
-  async function renderFallbackText(file: File, ext: string): Promise<void> {
-    const text = await readPlainTextIfPossible(file);
-    if (!text) {
-      context.setPreview(unsupportedPreview(file, ext));
+  async function renderFallbackText(file: File, ext: string, session: PreviewLoadSession): Promise<void> {
+    if (!(await session.confirmTextRead(file))) {
+      cancelCurrentFile();
       return;
     }
-    context.currentText.value = text.text;
-    appendFileMeta(`编码 ${text.encoding}`);
-    context.setPreview(codePreview(text.text));
+    const result = await session.runWorker<WorkerPreviewResult>(file, "fallback");
+    commitWorkerResult(file, ext, result, session);
+  }
+
+  /**
+   * 提交 Worker 完整结果。
+   * @param file 当前文件。
+   * @param ext 文件后缀。
+   * @param result Worker 结果。
+   * @param session 加载会话。
+   * @returns 无返回值。
+   */
+  function commitWorkerResult(file: File, ext: string, result: WorkerPreviewResult, session: PreviewLoadSession): void {
+    session.assertActive();
+    session.setTiming(result.readMs, result.processMs);
+    context.urlStore.clear();
+    const suffixes = [result.meta, result.encoding ? `编码 ${result.encoding}` : ""].filter(Boolean);
+    const meta = suffixes.length ? `${baseMeta(file, ext)} · ${suffixes.join(" · ")}` : undefined;
+    commitPreview(file, ext, result.currentText, result.preview, meta);
+  }
+
+  /**
+   * 取消当前文件预览。
+   * @returns 始终返回 true。
+   */
+  function cancelCurrentFile(): true {
+    context.previewTiming.value = { readMs: 0, processMs: 0 };
+    return true;
+  }
+
+  /**
+   * 生成文件基础元信息。
+   * @param file 当前文件。
+   * @param ext 文件后缀。
+   * @returns 元信息文本。
+   */
+  function baseMeta(file: File, ext: string): string {
+    return `${formatBytes(file.size)} · ${file.type || fileKindLabel(ext)} · ${new Date(file.lastModified).toLocaleString()}`;
+  }
+
+  /**
+   * 判断错误是否来自旧加载会话取消。
+   * @param error 未知错误。
+   * @returns 是否为取消错误。
+   */
+  function isCanceledLoad(error: unknown): boolean {
+    return error instanceof CanceledPreviewLoad || (error instanceof DOMException && error.name === "AbortError");
   }
 
   return { openFile };

@@ -44,6 +44,7 @@
 
 .file-title {
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .file-title strong {
@@ -59,6 +60,21 @@
   color: var(--muted);
   font-size: 12px;
   margin-top: 2px;
+}
+
+.preview-timing {
+  display: grid;
+  gap: 2px;
+  flex: 0 0 auto;
+  min-width: 82px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.preview-timing span {
+  display: block;
 }
 
 .viewer-actions {

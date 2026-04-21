@@ -41,6 +41,12 @@ export interface PreviewState {
   mediaKind?: "image" | "video" | "audio";
   url?: string;
   fileName?: string;
+  sandbox?: string;
+}
+
+export interface PreviewTiming {
+  readMs: number;
+  processMs: number;
 }
 
 export type ReaderIconName =

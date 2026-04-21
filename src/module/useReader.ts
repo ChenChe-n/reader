@@ -6,6 +6,7 @@ import { initialPreview, noticePreview } from "../utils/previewFactory";
 import { createFilePreviewActions } from "./reader/filePreview";
 import { createNavigationActions } from "./reader/navigation";
 import { createViewStateActions } from "./reader/viewState";
+import { createLargeTextConfirm } from "./reader/confirmDialog";
 
 const urlStore = createObjectUrlStore();
 
@@ -25,6 +26,11 @@ export function useReader() {
   const searchKeyword = ref("");
   const fileTitle = ref("未打开文件");
   const fileMeta = ref("支持 文本、图片、音频和视频");
+  const previewTiming = ref({ readMs: 0, processMs: 0 });
+  const loadVersion = ref(0);
+  const loadAbortController = ref<AbortController | null>(null);
+  const loadWorker = ref<Worker | null>(null);
+  const { confirmDialog, confirmLargeText, resolveConfirmDialog, cancelLargeTextConfirm } = createLargeTextConfirm();
   const preview = reactive(initialPreview());
   const pathLabel = computed(() => (stack.value.length ? `${stack.value.join("/")}/` : "未选择目录"));
   const filteredEntries = computed(() => filterEntries(entries.value, searchKeyword.value));
@@ -35,11 +41,23 @@ export function useReader() {
     currentFileDirectoryPath,
     fileTitle,
     fileMeta,
+    previewTiming,
+    loadAbortController,
+    loadWorker,
     setPreview,
     urlStore
   };
-  const { showEmpty, showNotice } = createViewStateActions(viewContext);
-  const { openFile } = createFilePreviewActions({ ...viewContext, rootHandle, stack });
+  const { showEmpty, showNotice } = createViewStateActions({ ...viewContext, loadVersion });
+  const { openFile } = createFilePreviewActions({
+    ...viewContext,
+    rootHandle,
+    stack,
+    loadVersion,
+    loadAbortController,
+    loadWorker,
+    confirmLargeText,
+    cancelLargeTextConfirm
+  });
   const navigation = createNavigationActions({
     rootHandle,
     stack,
@@ -61,6 +79,7 @@ export function useReader() {
    */
   async function openDirectory(): Promise<void> {
     try {
+      cancelLargeTextConfirm();
       const handle = await pickDirectory();
       rootHandle.value = handle;
       stack.value = [handle.name || "本地目录"];
@@ -90,6 +109,7 @@ export function useReader() {
   async function openEntry(item: LocalEntry): Promise<void> {
     selectedName.value = item.name;
     if (item.kind === "directory") {
+      cancelLargeTextConfirm();
       await navigation.openDirectoryEntry(item);
       return;
     }
@@ -129,6 +149,24 @@ export function useReader() {
     Object.assign(preview, next);
   }
 
+  /**
+   * 返回上一级目录并取消等待中的大文件确认。
+   * @returns 异步完成信号。
+   */
+  async function goUp(): Promise<void> {
+    cancelLargeTextConfirm();
+    await navigation.goUp();
+  }
+
+  /**
+   * 回到根目录并取消等待中的大文件确认。
+   * @returns 异步完成信号。
+   */
+  async function goHome(): Promise<void> {
+    cancelLargeTextConfirm();
+    await navigation.goHome();
+  }
+
   return {
     entries,
     currentHandle,
@@ -140,18 +178,21 @@ export function useReader() {
     preview,
     fileTitle,
     fileMeta,
+    previewTiming,
+    confirmDialog,
     pathLabel,
     rootHandle,
     currentFileDirectoryPath,
     openDirectory,
     loadDirectory,
     openEntry,
-    goUp: navigation.goUp,
-    goHome: navigation.goHome,
+    goUp,
+    goHome,
     openRelativeDocument: navigation.openRelativeDocument,
     copyCurrentText,
     downloadCurrentFile,
-    createObjectUrl: urlStore.create
+    createObjectUrl: urlStore.create,
+    resolveConfirmDialog
   };
 }
 

@@ -14,12 +14,18 @@ export function createViewStateActions(context: ReaderViewContext) {
    * @returns 无返回值。
    */
   function showEmpty(title: string, message: string): void {
+    if (context.loadVersion) context.loadVersion.value += 1;
+    context.loadAbortController?.value?.abort();
+    if (context.loadAbortController) context.loadAbortController.value = null;
+    context.loadWorker?.value?.terminate();
+    if (context.loadWorker) context.loadWorker.value = null;
     context.urlStore.clear();
     context.currentFile.value = null;
     context.currentText.value = "";
     context.currentFileDirectoryPath.value = [];
     context.fileTitle.value = "未打开文件";
     context.fileMeta.value = "支持 文本、图片、音频和视频";
+    context.previewTiming.value = { readMs: 0, processMs: 0 };
     context.setPreview(emptyPreview(title, message));
   }
 
@@ -29,7 +35,13 @@ export function createViewStateActions(context: ReaderViewContext) {
    * @returns 无返回值。
    */
   function showNotice(message: string): void {
+    if (context.loadVersion) context.loadVersion.value += 1;
+    context.loadAbortController?.value?.abort();
+    if (context.loadAbortController) context.loadAbortController.value = null;
+    context.loadWorker?.value?.terminate();
+    if (context.loadWorker) context.loadWorker.value = null;
     context.urlStore.clear();
+    context.previewTiming.value = { readMs: 0, processMs: 0 };
     context.setPreview(noticePreview(message));
   }
 
