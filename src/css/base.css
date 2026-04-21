@@ -1,0 +1,84 @@
+:root {
+  color-scheme: light;
+  --bg: #f4f7fb;
+  --panel: #ffffff;
+  --panel-2: #f7f9fc;
+  --text: #1f2937;
+  --muted: #64748b;
+  --line: #d9e2ef;
+  --accent: #2563eb;
+  --accent-weak: #eaf2ff;
+  --accent-soft: #f4f8ff;
+  --code-bg: #f7f9fc;
+  --code-border: #d8e2ef;
+  --code-text: #243041;
+  --code-inline-bg: #eef4fb;
+  --code-inline-text: #17406f;
+  --table-head: #edf4ff;
+  --table-row: #fbfdff;
+  --shadow: 0 18px 44px rgba(29, 41, 57, 0.08);
+  --radius: 8px;
+  --sidebar-width: 30%;
+  font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+}
+
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(244, 247, 251, 0.98)),
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.1), transparent 28%);
+  color: var(--text);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.app {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+}
+
+.button {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0 12px;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.button:hover:not(:disabled) {
+  border-color: #aeb9c9;
+  background: #f9fbff;
+}
+
+.button.icon-only {
+  width: 36px;
+  padding: 0;
+  justify-content: center;
+}

@@ -1,0 +1,18 @@
+# Node 
+node_modules/
+dist/
+
+# Visual Studio & Visual Studio Code
+.vs*/
+
+# Jetbrains IDEs
+.idea/
+
+scripts/resources.rc
+scripts/RC*
+
+# macOS system files
+**/.DS_Store
+
+# Nix build files
+**/result

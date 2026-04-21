@@ -1,0 +1,139 @@
+.markdown {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  line-height: 1.75;
+  font-size: 16px;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  line-height: 1.28;
+  margin: 1.4em 0 0.6em;
+}
+
+.markdown h1 {
+  font-size: 32px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.markdown h2 {
+  font-size: 24px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.markdown h3 {
+  font-size: 20px;
+}
+
+.markdown p {
+  margin: 0 0 1em;
+}
+
+.markdown a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.markdown blockquote {
+  margin: 1em 0;
+  padding: 10px 16px;
+  border-left: 4px solid #93b7f5;
+  background: #f5f9ff;
+  color: #3b4b62;
+}
+
+.markdown code,
+.code-view {
+  font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+}
+
+.markdown :not(pre) > code {
+  background: var(--code-inline-bg);
+  color: var(--code-inline-text);
+  border: 1px solid var(--code-border);
+  border-radius: 5px;
+  padding: 2px 5px;
+  font-size: 0.92em;
+}
+
+.markdown pre,
+.code-view {
+  background: var(--code-bg);
+  color: var(--code-text);
+  border: 1px solid var(--code-border);
+  border-radius: 8px;
+  padding: 15px 16px;
+  overflow: auto;
+  line-height: 1.62;
+  tab-size: 2;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.markdown pre code {
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.markdown table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.1em 0;
+  display: block;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.markdown th,
+.markdown td {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+
+.markdown th {
+  background: var(--table-head);
+  color: #233756;
+  font-weight: 650;
+  text-align: left;
+}
+
+.markdown tr:nth-child(even) td {
+  background: var(--table-row);
+}
+
+.markdown tr:last-child td {
+  border-bottom: 0;
+}
+
+.markdown th:last-child,
+.markdown td:last-child {
+  border-right: 0;
+}
+
+.markdown img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.code-view {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

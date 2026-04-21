@@ -1,0 +1,130 @@
+.viewer {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  position: relative;
+}
+
+.layout.preview-maximized .viewer {
+  border-radius: 0;
+  border: 0;
+}
+
+.viewer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.viewer-expand-toggle {
+  width: 0;
+  min-width: 0;
+  height: 36px;
+  padding: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border: 0;
+  margin-right: 0;
+  transition: opacity 0.16s ease, width 0.16s ease, margin-right 0.16s ease;
+}
+
+.layout.sidebar-collapsed .viewer-expand-toggle {
+  width: 36px;
+  min-width: 36px;
+  opacity: 1;
+  pointer-events: auto;
+  border: 1px solid var(--line);
+  margin-right: 2px;
+}
+
+.file-title {
+  min-width: 0;
+}
+
+.file-title strong {
+  display: block;
+  font-size: 15px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.file-title span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.viewer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.content {
+  min-height: 0;
+  overflow: auto;
+  padding: 28px;
+  background: #ffffff;
+  overscroll-behavior: contain;
+}
+
+.preview-corner-actions {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 12;
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.svg-action {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #c7d5ea;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #315174;
+  box-shadow: 0 10px 24px rgba(29, 41, 57, 0.14);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+}
+
+.svg-action:hover {
+  color: var(--accent);
+  border-color: #9bb7e8;
+  background: #ffffff;
+}
+
+.svg-action::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  white-space: nowrap;
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: #243041;
+  color: #fff;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.svg-action:hover::after {
+  opacity: 1;
+  transform: translateY(0);
+}
