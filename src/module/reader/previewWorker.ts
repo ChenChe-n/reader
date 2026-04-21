@@ -1,4 +1,5 @@
 import type { PreviewState } from "../../types";
+import { continuationStyle, styleForLine } from "./workerLineStyles";
 
 declare const FileReaderSync: {
   new (): {
@@ -73,7 +74,7 @@ function buildPreview(file: File, mode: WorkerRequest["mode"]): WorkerResult {
  */
 function previewForMode(text: string, mode: WorkerRequest["mode"]): Pick<WorkerResult, "preview" | "currentText" | "meta"> {
   if (mode === "html") return { preview: { kind: "html", html: text }, currentText: text };
-  return { preview: lineTextPreview(text), currentText: "", meta: lineTextMeta(mode) };
+  return { preview: lineTextPreview(text, mode), currentText: "", meta: lineTextMeta(mode) };
 }
 
 /**
@@ -81,19 +82,21 @@ function previewForMode(text: string, mode: WorkerRequest["mode"]): Pick<WorkerR
  * @param text 文本内容。
  * @returns 行文本预览。
  */
-function lineTextPreview(text: string): PreviewState {
-  const lines: Record<string, { data: string; style: Record<string, string> }> = {};
+function lineTextPreview(text: string, mode: WorkerRequest["mode"]): PreviewState {
+  const lines: Record<string, { data: string; style: Record<string, string>; meta?: Record<string, string> }> = {};
   let index = 0;
   text.split(/\r\n|\n|\r/).forEach((line, sourceLine) => {
+    const baseStyle = styleForLine(line, mode);
     if (!line) {
-      lines[String(index)] = { data: "", style: { "--source-line": String(sourceLine), "--chunk": "0" } };
+      lines[String(index)] = { data: "", style: baseStyle, meta: { sourceLine: String(sourceLine), chunk: "0" } };
       index += 1;
       return;
     }
     for (let offset = 0; offset < line.length; offset += MAX_LINE_LENGTH) {
       lines[String(index)] = {
         data: line.slice(offset, offset + MAX_LINE_LENGTH),
-        style: { "--source-line": String(sourceLine), "--chunk": String(offset / MAX_LINE_LENGTH) }
+        style: offset ? continuationStyle(baseStyle) : baseStyle,
+        meta: { sourceLine: String(sourceLine), chunk: String(offset / MAX_LINE_LENGTH) }
       };
       index += 1;
     }

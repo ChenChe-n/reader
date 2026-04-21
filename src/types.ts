@@ -35,6 +35,7 @@ export interface RelativeFileResult {
 export interface LineTextLine {
   data: string;
   style: Record<string, string>;
+  meta?: Record<string, string>;
 }
 
 export interface LineTextDocument {
