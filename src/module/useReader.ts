@@ -7,6 +7,8 @@ import { createFilePreviewActions } from "./reader/filePreview";
 import { createNavigationActions } from "./reader/navigation";
 import { createViewStateActions } from "./reader/viewState";
 import { createLargeTextConfirm } from "./reader/confirmDialog";
+import { copyCurrentText, downloadCurrentFile } from "./reader/fileCommands";
+import { createLoadingState } from "./reader/loadingState";
 
 const urlStore = createObjectUrlStore();
 
@@ -27,9 +29,7 @@ export function useReader() {
   const fileTitle = ref("未打开文件");
   const fileMeta = ref("支持 文本、图片、音频和视频");
   const previewTiming = ref({ readMs: 0, processMs: 0 });
-  const loadVersion = ref(0);
-  const loadAbortController = ref<AbortController | null>(null);
-  const loadWorker = ref<Worker | null>(null);
+  const { loadVersion, loadAbortController, loadWorker } = createLoadingState();
   const { confirmDialog, confirmLargeText, resolveConfirmDialog, cancelLargeTextConfirm } = createLargeTextConfirm();
   const preview = reactive(initialPreview());
   const pathLabel = computed(() => (stack.value.length ? `${stack.value.join("/")}/` : "未选择目录"));
@@ -117,30 +117,6 @@ export function useReader() {
   }
 
   /**
-   * 复制当前文本内容。
-   * @returns 异步完成信号。
-   */
-  async function copyCurrentText(): Promise<void> {
-    if (currentText.value) await navigator.clipboard.writeText(currentText.value);
-  }
-
-  /**
-   * 下载当前文件。
-   * @returns 无返回值。
-   */
-  function downloadCurrentFile(): void {
-    if (!currentFile.value) return;
-    const url = URL.createObjectURL(currentFile.value);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = currentFile.value.name;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  /**
    * 更新预览状态。
    * @param next 下一个预览状态。
    * @returns 无返回值。
@@ -189,8 +165,8 @@ export function useReader() {
     goUp,
     goHome,
     openRelativeDocument: navigation.openRelativeDocument,
-    copyCurrentText,
-    downloadCurrentFile,
+    copyCurrentText: () => copyCurrentText(currentText),
+    downloadCurrentFile: () => downloadCurrentFile(currentFile),
     createObjectUrl: urlStore.create,
     resolveConfirmDialog
   };
