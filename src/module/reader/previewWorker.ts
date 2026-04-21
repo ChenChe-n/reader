@@ -1,5 +1,6 @@
 import type { PreviewState } from "../../types";
 import { continuationStyle, styleForLine } from "./workerLineStyles";
+import { markdownPreview } from "./workerMarkdown";
 
 declare const FileReaderSync: {
   new (): {
@@ -73,9 +74,11 @@ function buildPreview(file: File, mode: WorkerRequest["mode"]): WorkerResult {
  * @returns 预览和当前文本。
  */
 function previewForMode(text: string, mode: WorkerRequest["mode"]): Pick<WorkerResult, "preview" | "currentText" | "meta"> {
+  if (mode === "markdown") return { preview: markdownPreview(text), currentText: text, meta: "Markdown 解析预览" };
   if (mode === "html") return { preview: { kind: "html", html: text }, currentText: text };
   return { preview: lineTextPreview(text, mode), currentText: "", meta: lineTextMeta(mode) };
 }
+
 
 /**
  * 创建行文本预览。
