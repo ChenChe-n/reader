@@ -28,6 +28,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
   min-height: 58px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--line);
@@ -74,6 +75,9 @@
   color: var(--muted);
   font-size: 12px;
   margin-top: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .preview-timing {
@@ -102,7 +106,7 @@
   min-height: 0;
   overflow: auto;
   padding: 28px;
-  background: #ffffff;
+  background: var(--panel);
   overscroll-behavior: contain;
 }
 
@@ -119,11 +123,11 @@
 .svg-action {
   width: 38px;
   height: 38px;
-  border: 1px solid #c7d5ea;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #315174;
-  box-shadow: 0 10px 24px rgba(29, 41, 57, 0.14);
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  color: var(--accent-text);
+  box-shadow: var(--shadow-strong);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -133,8 +137,8 @@
 
 .svg-action:hover {
   color: var(--accent);
-  border-color: #9bb7e8;
-  background: #ffffff;
+  border-color: var(--accent);
+  background: var(--panel);
 }
 
 .svg-action::after {
@@ -148,8 +152,8 @@
   white-space: nowrap;
   border-radius: 6px;
   padding: 5px 8px;
-  background: #243041;
-  color: #fff;
+  background: color-mix(in srgb, var(--bg) 82%, var(--panel));
+  color: var(--panel);
   font-size: 12px;
   pointer-events: none;
 }
@@ -157,4 +161,57 @@
 .svg-action:hover::after {
   opacity: 1;
   transform: translateY(0);
+}
+
+@media (max-width: 560px) {
+  .viewer-head {
+    gap: 8px;
+    min-height: 52px;
+    padding: 8px 10px;
+  }
+
+  .preview-timing {
+    display: none;
+  }
+
+  .viewer-actions {
+    gap: 6px;
+  }
+
+  .preview-corner-actions {
+    right: 12px;
+    bottom: 12px;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 360px) {
+  .viewer-head {
+    gap: 6px;
+    padding: 7px;
+  }
+
+  .viewer-head .button.icon-only,
+  .layout.sidebar-collapsed .viewer-expand-toggle {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+  }
+
+  .file-title strong {
+    font-size: 14px;
+  }
+
+  .file-title span {
+    font-size: 11px;
+  }
+
+  .viewer-actions {
+    gap: 4px;
+  }
+
+  .svg-action {
+    width: 34px;
+    height: 34px;
+  }
 }

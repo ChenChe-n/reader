@@ -20,7 +20,7 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--accent);
-  background: #f8fbff;
+  background: var(--accent-soft);
 }
 
 .empty h2 {
@@ -40,7 +40,7 @@
   min-height: calc(100vh - 160px);
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: white;
+  background: var(--panel);
 }
 
 .document-frame {
@@ -49,32 +49,32 @@
   min-height: calc(100vh - 160px);
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #f7f9fc;
+  background: var(--panel-2);
 }
 
 .office-preview {
   max-width: 1180px;
   margin: 0 auto;
   padding: 24px;
-  color: #172033;
+  color: var(--text);
   font: 14px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .office-sheet,
 .office-page {
   margin: 0 0 18px;
-  border: 1px solid #dbe3ef;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 14px 38px rgba(29, 41, 57, 0.08);
+  background: var(--panel);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 
 .office-title {
   margin: 0;
   padding: 12px 16px;
-  border-bottom: 1px solid #e6edf6;
-  background: #f7f9fc;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
   font-size: 14px;
   font-weight: 700;
 }
@@ -94,7 +94,7 @@
   min-width: 96px;
   max-width: 420px;
   padding: 7px 10px;
-  border: 1px solid #e6edf6;
+  border: 1px solid var(--line);
   vertical-align: top;
   overflow-wrap: anywhere;
 }
@@ -103,8 +103,8 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #eef4fb;
-  color: #475467;
+  background: var(--table-head);
+  color: var(--muted);
   font-weight: 600;
   text-align: left;
 }
@@ -128,7 +128,7 @@
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #f7f9fc;
+  background: var(--panel-2);
 }
 
 .media-stage img,
@@ -140,7 +140,7 @@
   height: auto;
   object-fit: contain;
   border-radius: 8px;
-  box-shadow: 0 16px 42px rgba(29, 41, 57, 0.12);
+  box-shadow: var(--shadow-strong);
 }
 
 .media-stage audio {
@@ -149,9 +149,9 @@
 
 .notice {
   padding: 14px 16px;
-  border: 1px solid #fedf89;
-  background: #fffbeb;
-  color: #7a4b00;
+  border: 1px solid var(--warning-border);
+  background: var(--warning-bg);
+  color: var(--warning-text);
   border-radius: 8px;
   line-height: 1.7;
 }
@@ -163,7 +163,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--panel);
   font-family: Consolas, "Courier New", monospace;
   font-size: 13px;
   line-height: 22px;
@@ -212,7 +212,7 @@
   z-index: 1;
   padding: 0 12px;
   border-right: 1px solid var(--line);
-  background: #f7f9fc;
+  background: var(--panel-2);
   color: var(--muted);
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -250,12 +250,12 @@
   border: 0;
   border-radius: 999px;
   padding: 0;
-  background: rgba(100, 116, 139, 0.42);
+  background: color-mix(in srgb, var(--muted) 48%, transparent);
   cursor: pointer;
 }
 
 .line-scrollbar:hover {
-  background: rgba(37, 99, 235, 0.62);
+  background: color-mix(in srgb, var(--accent) 68%, transparent);
 }
 
 .line-scrollbar-y {
@@ -309,4 +309,28 @@
 
 .line-text-editor-spacer {
   visibility: hidden;
+}
+
+@media (max-width: 420px) {
+  .empty {
+    padding: 16px;
+  }
+
+  .html-frame,
+  .document-frame {
+    min-height: calc(100vh - 110px);
+  }
+
+  .office-preview {
+    padding: 12px;
+  }
+
+  .office-doc {
+    padding: 16px;
+  }
+
+  .media-stage {
+    padding: 10px;
+  }
+
 }

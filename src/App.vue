@@ -15,6 +15,7 @@
         @reload="loadDirectory(currentHandle)"
         @home="goHome"
         @go-up="goUp"
+        @theme="themePanelVisible = true"
         @collapse="sidebarCollapsed = true"
       />
 
@@ -28,6 +29,7 @@
       ></button>
 
       <PreviewPane
+        v-if="shouldShowPreview"
         v-model:draft-text="draftText"
         :preview="preview"
         :file-title="fileTitle"
@@ -59,17 +61,36 @@
       @confirm="resolveConfirmDialog(true)"
       @cancel="resolveConfirmDialog(false)"
     />
+    <ThemePanel
+      v-if="themePanelVisible"
+      :settings="themeSettings"
+      :effective-mode="effectiveThemeMode"
+      @set-mode="setThemeMode"
+      @set-custom-color="setCustomThemeColor"
+      @reset-custom="resetCustomTheme"
+      @close="themePanelVisible = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useReader } from "./module/useReader";
+import { useThemeState } from "./theme/themeState";
 import ConfirmDialog from "./module/ConfirmDialog.vue";
 import FileSidebar from "./module/FileSidebar.vue";
 import PreviewPane from "./module/PreviewPane.vue";
+import ThemePanel from "./module/ThemePanel.vue";
 
 const reader = useReader();
+const theme = useThemeState();
+const {
+  settings: themeSettings,
+  effectiveMode: effectiveThemeMode,
+  setMode: setThemeMode,
+  setCustomColor: setCustomThemeColor,
+  resetCustom: resetCustomTheme
+} = theme;
 const {
   filteredEntries,
   selectedName,
@@ -95,6 +116,7 @@ const {
   openEntry,
   goUp,
   goHome,
+  restoreLastSession,
   copyCurrentText,
   downloadCurrentFile,
   saveDraft,
@@ -107,12 +129,16 @@ const resizerRef = ref<HTMLButtonElement | null>(null);
 const resizing = ref(false);
 const sidebarCollapsed = ref(false);
 const previewMaximized = ref(false);
+const themePanelVisible = ref(false);
+const narrowLayout = ref(false);
 const canGoUp = computed(() => Boolean(rootHandle.value && pathLabel.value.split("/").filter(Boolean).length > 1));
+const shouldShowPreview = computed(() => !narrowLayout.value || sidebarCollapsed.value || previewMaximized.value);
 const layoutClass = computed(() => ({
   layout: true,
   resizing: resizing.value,
   "sidebar-collapsed": sidebarCollapsed.value,
-  "preview-maximized": previewMaximized.value
+  "preview-maximized": previewMaximized.value,
+  "preview-hidden": !shouldShowPreview.value
 }));
 
 /**
@@ -121,7 +147,7 @@ const layoutClass = computed(() => ({
  * @returns 无返回值。
  */
 function startResize(event: PointerEvent): void {
-  if (sidebarCollapsed.value || previewMaximized.value || window.matchMedia("(max-width: 860px)").matches) return;
+  if (sidebarCollapsed.value || previewMaximized.value || narrowLayout.value) return;
   resizing.value = true;
   resizerRef.value?.setPointerCapture(event.pointerId);
 }
@@ -147,6 +173,21 @@ function stopResize(): void {
 }
 
 /**
+ * 同步窄屏状态，窄屏下文件区展开时不挂载预览区，避免隐藏预览参与尺寸计算。
+ * @returns 清理监听函数。
+ */
+function watchNarrowLayout(): () => void {
+  const query = window.matchMedia("(max-width: 860px)");
+  const update = () => {
+    narrowLayout.value = query.matches;
+    if (query.matches) stopResize();
+  };
+  update();
+  query.addEventListener("change", update);
+  return () => query.removeEventListener("change", update);
+}
+
+/**
  * 打开相对文件并按 hash 滚动。
  * @param href 相对链接地址。
  * @returns 异步完成信号。
@@ -169,13 +210,18 @@ function scrollToDocumentHash(hash: string): void {
   target?.scrollIntoView({ block: "start" });
 }
 
+let cleanupNarrowLayout: (() => void) | null = null;
+
 onMounted(() => {
+  cleanupNarrowLayout = watchNarrowLayout();
   window.addEventListener("pointermove", resizePanels);
   window.addEventListener("pointerup", stopResize);
   window.addEventListener("pointercancel", stopResize);
+  void restoreLastSession();
 });
 
 onUnmounted(() => {
+  cleanupNarrowLayout?.();
   window.removeEventListener("pointermove", resizePanels);
   window.removeEventListener("pointerup", stopResize);
   window.removeEventListener("pointercancel", stopResize);
