@@ -7,23 +7,7 @@ export type LineMode = "markdown" | "text" | "json" | "html" | "fallback";
  * @returns 行显示样式。
  */
 export function styleForLine(line: string, mode: LineMode): Record<string, string> {
-  if (mode === "json") return jsonLineStyle(line);
   if (mode === "markdown") return markdownLineStyle(line);
-  return {};
-}
-
-/**
- * 解析 JSON 行样式。
- * @param line 原始行文本。
- * @returns 行样式。
- */
-function jsonLineStyle(line: string): Record<string, string> {
-  const trimmed = line.trim();
-  if (!trimmed) return {};
-  if (/^[\]}],?$/.test(trimmed) || /^[\[{],?$/.test(trimmed)) return { color: "var(--muted)", fontWeight: "600" };
-  if (/^"[^"]+"\s*:/.test(trimmed)) return { color: "var(--accent-text)" };
-  if (/\b(true|false|null)\b/.test(trimmed)) return { color: "var(--accent)" };
-  if (/-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/.test(trimmed)) return { color: "color-mix(in srgb, #d97706 76%, var(--panel))" };
   return {};
 }
 
