@@ -63,7 +63,9 @@ export function spansForLine(line: string, mode: LineMode): LineTextSpan[] {
 export function createLineSyntaxState(mode: LineMode): LineSyntaxState | null {
   if (mode === "typescript" || mode === "javascript") return { inBlockComment: false };
   if (mode === "c" || mode === "cpp" || mode === "rust" || mode === "java" || mode === "css") return { inBlockComment: false };
-  if (mode === "html" || mode === "vue") return { inComment: false };
+  if (mode === "html" || mode === "vue") {
+    return { inComment: false, inScript: false, inStyle: false, inScriptBlockComment: false, inStyleBlockComment: false };
+  }
   return null;
 }
 
@@ -115,12 +117,20 @@ export function spansForLineWithState(line: string, mode: LineMode, state: LineS
     const markupState = state as MarkupState;
     const result = htmlLineResult(line, markupState);
     markupState.inComment = result.state.inComment;
+    markupState.inScript = result.state.inScript;
+    markupState.inStyle = result.state.inStyle;
+    markupState.inScriptBlockComment = result.state.inScriptBlockComment;
+    markupState.inStyleBlockComment = result.state.inStyleBlockComment;
     return result.spans;
   }
   if (mode === "vue") {
     const markupState = state as MarkupState;
     const result = vueLineResult(line, markupState);
     markupState.inComment = result.state.inComment;
+    markupState.inScript = result.state.inScript;
+    markupState.inStyle = result.state.inStyle;
+    markupState.inScriptBlockComment = result.state.inScriptBlockComment;
+    markupState.inStyleBlockComment = result.state.inStyleBlockComment;
     return result.spans;
   }
   return spansForLine(line, mode);

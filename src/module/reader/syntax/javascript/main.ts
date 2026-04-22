@@ -1,7 +1,7 @@
 import type { LineTextSpan } from "../../../../types";
 import { scriptLineResult, scriptLineSpans, type ScriptLineResult, type ScriptSyntaxState } from "../typescript/main";
 
-const JAVASCRIPT_KEYWORDS = new Set([
+export const JAVASCRIPT_KEYWORDS = new Set([
   "async",
   "await",
   "break",
