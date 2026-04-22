@@ -30,12 +30,23 @@
       </div>
     </div>
 
-    <div v-if="!previewEditing" ref="contentRef" class="content" @click="handleContentClick">
+    <div
+      v-if="!previewEditing"
+      ref="contentRef"
+      :class="['content', { 'content-frame': preview.kind === 'html' || preview.kind === 'document' }]"
+      @click="handleContentClick"
+    >
       <div v-if="preview.kind === 'notice'" class="notice">{{ preview.message }}</div>
       <article v-else-if="preview.kind === 'markdown'" class="markdown" v-html="preview.html"></article>
       <LineTextViewer v-else-if="preview.kind === 'lineText'" ref="lineViewerRef" :document="preview.lineText" />
       <SpreadsheetViewer v-else-if="preview.kind === 'spreadsheet'" :document="preview.spreadsheet" />
-      <iframe v-else-if="preview.kind === 'html'" class="html-frame" :srcdoc="preview.html" :sandbox="preview.sandbox || iframeSandbox"></iframe>
+      <iframe
+        v-else-if="preview.kind === 'html'"
+        class="html-frame"
+        :src="htmlPreviewUrl"
+        :sandbox="preview.sandbox || iframeSandbox"
+        title="HTML 预览"
+      ></iframe>
       <iframe
         v-else-if="preview.kind === 'document'"
         class="document-frame"
@@ -84,7 +95,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { isAnchorOnly, shouldResolveLocalResource } from "../api/localFiles";
 import type { FileSystemDirectoryHandleLike, PreviewState, PreviewTiming } from "../types";
-import { rewriteRelativeResources } from "../utils/resourceRewriter";
+import { rewriteHtmlRelativeResources, rewriteRelativeResources } from "../utils/resourceRewriter";
 import IconView from "./IconView.vue";
 import LineTextEditor from "./LineTextEditor.vue";
 import LineTextViewer from "./LineTextViewer.vue";
@@ -123,7 +134,8 @@ const emit = defineEmits<{
 const contentRef = ref<HTMLElement | null>(null);
 const lineViewerRef = ref<InstanceType<typeof LineTextViewer> | null>(null);
 const lineEditorRef = ref<InstanceType<typeof LineTextEditor> | null>(null);
-const iframeSandbox = "allow-forms allow-popups allow-same-origin allow-scripts allow-modals";
+const htmlPreviewUrl = ref("about:blank");
+const iframeSandbox = "allow-forms allow-popups allow-scripts allow-modals allow-same-origin";
 const fullscreenTip = computed(() => (props.isPreviewMaximized ? "还原预览" : "最大化预览"));
 const editToggleTip = computed(() => (props.previewEditing ? "关闭编辑" : "编辑"));
 const readTimingLabel = computed(() => formatDuration(props.previewTiming.readMs));
@@ -180,6 +192,20 @@ function handlePreviewMessage(event: MessageEvent): void {
   if (!isAnchorOnly(data.href) && shouldResolveLocalResource(data.href)) emit("open-relative", data.href);
 }
 
+function setHtmlPreviewUrl(html: string): void {
+  revokeHtmlPreviewUrl();
+  htmlPreviewUrl.value = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+}
+
+function clearHtmlPreviewUrl(): void {
+  revokeHtmlPreviewUrl();
+  htmlPreviewUrl.value = "about:blank";
+}
+
+function revokeHtmlPreviewUrl(): void {
+  if (htmlPreviewUrl.value.startsWith("blob:")) URL.revokeObjectURL(htmlPreviewUrl.value);
+}
+
 watch(
   () => (props.preview.kind === "markdown" && !props.previewEditing ? props.preview.html : ""),
   async () => {
@@ -190,6 +216,21 @@ watch(
   { flush: "post" }
 );
 
+watch(
+  () => (props.preview.kind === "html" && !props.previewEditing ? props.preview.html || "" : ""),
+  async html => {
+    if (props.preview.kind !== "html" || props.previewEditing) {
+      clearHtmlPreviewUrl();
+      return;
+    }
+    setHtmlPreviewUrl(await rewriteHtmlRelativeResources(html, props.rootHandle, props.basePathParts, props.createObjectUrl));
+  },
+  { immediate: true }
+);
+
 onMounted(() => window.addEventListener("message", handlePreviewMessage));
-onUnmounted(() => window.removeEventListener("message", handlePreviewMessage));
+onUnmounted(() => {
+  window.removeEventListener("message", handlePreviewMessage);
+  revokeHtmlPreviewUrl();
+});
 </script>

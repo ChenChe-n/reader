@@ -85,13 +85,14 @@ function cleanExtractedText(value: string): string {
 }
 
 const OFFICE_CSS = `
-body{margin:0;background:#f7f9fc;color:#172033;font:14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+:root{--panel:#fff;--panel-2:#f7f9fc;--text:#172033;--line:#dbe3ef;--table-head:#eef4fb;--shadow:0 14px 38px rgba(29,41,57,.08)}
+body{margin:0;background:var(--panel-2);color:var(--text);font:14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 .office-preview{max-width:1180px;margin:0 auto;padding:24px}
-.office-sheet,.office-page{margin:0 0 18px;border:1px solid #dbe3ef;border-radius:8px;background:#fff;box-shadow:0 14px 38px rgba(29,41,57,.08);overflow:hidden}
-.office-title{margin:0;padding:12px 16px;border-bottom:1px solid #e6edf6;background:#f7f9fc;font-size:14px;font-weight:700}
+.office-sheet,.office-page{margin:0 0 18px;border:1px solid var(--line);border-radius:8px;background:var(--panel);box-shadow:var(--shadow);overflow:hidden}
+.office-title{margin:0;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel-2);font-size:14px;font-weight:700}
 .office-scroll{overflow:auto}
 .office-table{width:100%;border-collapse:collapse;font-size:13px}
-.office-table td{min-width:96px;max-width:420px;padding:7px 10px;border:1px solid #e6edf6;vertical-align:top;overflow-wrap:anywhere}
+.office-table td{min-width:96px;max-width:420px;padding:7px 10px;border:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
 .office-doc{padding:22px 28px}
 .office-doc img{max-width:100%;height:auto}
 .office-doc pre{white-space:pre-wrap;overflow-wrap:anywhere}

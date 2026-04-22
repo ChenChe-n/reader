@@ -17,12 +17,55 @@ export async function rewriteHtmlRelativeResources(
   basePathParts: string[],
   createUrl: UrlCreator
 ): Promise<string> {
-  if (!rootHandle) return text;
+  if (canUseStaticHtmlFastPath(text)) return ensureDoctype(text);
   const doc = new DOMParser().parseFromString(text, "text/html");
+  removeExecutableContent(doc);
+  if (!rootHandle) return `<!doctype html>\n${doc.documentElement.outerHTML}`;
   await rewriteLinkedStylesheets(doc, rootHandle, basePathParts, createUrl);
   await rewriteRelativeResources(doc, rootHandle, basePathParts, createUrl);
   injectHtmlNavigationBridge(doc);
   return `<!doctype html>\n${doc.documentElement.outerHTML}`;
+}
+
+/**
+ * 判断 HTML 是否可以跳过 DOM 解析和资源重写。
+ * @param text HTML 源码。
+ * @returns 是否可直接交给 iframe 渲染。
+ */
+function canUseStaticHtmlFastPath(text: string): boolean {
+  if (/<script\b/i.test(text)) return false;
+  if (/\s+on[a-z]+\s*=/i.test(text)) return false;
+  if (/javascript\s*:/i.test(text)) return false;
+  if (/\b(?:src|href|srcset|data|poster|action)\s*=/i.test(text)) return false;
+  if (/\burl\(\s*['"]?(?!data:|blob:|https?:|\/\/|#)/i.test(text)) return false;
+  return true;
+}
+
+/**
+ * 确保交给 iframe 的字符串是完整 HTML 文档。
+ * @param text HTML 源码。
+ * @returns 带 doctype 的 HTML。
+ */
+function ensureDoctype(text: string): string {
+  return /^\s*<!doctype\b/i.test(text) ? text : `<!doctype html>\n${text}`;
+}
+
+/**
+ * 移除用户 HTML 中会执行脚本或触发脚本加载的内容。
+ * @param doc HTML 文档。
+ * @returns 无返回值。
+ */
+function removeExecutableContent(doc: Document): void {
+  doc.querySelectorAll("script").forEach(element => element.remove());
+  doc.querySelectorAll("*").forEach(element => {
+    for (const attribute of Array.from(element.attributes)) {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value.trim();
+      if (name.startsWith("on") || value.toLowerCase().startsWith("javascript:")) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+  });
 }
 
 /**

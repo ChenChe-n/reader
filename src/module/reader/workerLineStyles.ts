@@ -20,10 +20,10 @@ export function styleForLine(line: string, mode: LineMode): Record<string, strin
 function jsonLineStyle(line: string): Record<string, string> {
   const trimmed = line.trim();
   if (!trimmed) return {};
-  if (/^[\]}],?$/.test(trimmed) || /^[\[{],?$/.test(trimmed)) return { color: "#475569", fontWeight: "600" };
-  if (/^"[^"]+"\s*:/.test(trimmed)) return { color: "#075985" };
-  if (/\b(true|false|null)\b/.test(trimmed)) return { color: "#7c3aed" };
-  if (/-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/.test(trimmed)) return { color: "#b45309" };
+  if (/^[\]}],?$/.test(trimmed) || /^[\[{],?$/.test(trimmed)) return { color: "var(--muted)", fontWeight: "600" };
+  if (/^"[^"]+"\s*:/.test(trimmed)) return { color: "var(--accent-text)" };
+  if (/\b(true|false|null)\b/.test(trimmed)) return { color: "var(--accent)" };
+  if (/-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/.test(trimmed)) return { color: "color-mix(in srgb, #d97706 76%, var(--panel))" };
   return {};
 }
 
@@ -33,9 +33,9 @@ function jsonLineStyle(line: string): Record<string, string> {
  * @returns 行样式。
  */
 function markdownLineStyle(line: string): Record<string, string> {
-  if (/^#{1,6}\s+/.test(line)) return { color: "#0f172a", fontWeight: "700" };
-  if (/^\s*>/.test(line)) return { color: "#64748b", borderLeft: "3px solid #cbd5e1", paddingLeft: "10px" };
-  if (/^\s*[-*+]\s+/.test(line) || /^\s*\d+\.\s+/.test(line)) return { color: "#334155" };
-  if (/^\s*```/.test(line)) return { color: "#7c3aed", fontWeight: "600" };
+  if (/^#{1,6}\s+/.test(line)) return { color: "var(--text)", fontWeight: "700" };
+  if (/^\s*>/.test(line)) return { color: "var(--muted)", borderLeft: "3px solid var(--line-strong)", paddingLeft: "10px" };
+  if (/^\s*[-*+]\s+/.test(line) || /^\s*\d+\.\s+/.test(line)) return { color: "var(--text)" };
+  if (/^\s*```/.test(line)) return { color: "var(--accent)", fontWeight: "600" };
   return {};
 }

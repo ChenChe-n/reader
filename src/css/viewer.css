@@ -110,6 +110,10 @@
   overscroll-behavior: contain;
 }
 
+.content-frame {
+  overflow: hidden;
+}
+
 .preview-corner-actions {
   position: absolute;
   right: 18px;

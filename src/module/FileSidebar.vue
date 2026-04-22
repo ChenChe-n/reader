@@ -15,6 +15,9 @@
         <button class="button icon-only" title="回到根目录" :disabled="!hasRoot" @click="$emit('home')">
           <IconView name="ico-home" />
         </button>
+        <button class="button icon-only" title="配色设置" @click="$emit('theme')">
+          <IconView name="ico-theme" />
+        </button>
         <button class="button icon-only collapse-toggle" title="折叠文件区" @click="$emit('collapse')">
           <IconView name="ico-panel-close" />
         </button>
@@ -73,6 +76,7 @@ const emit = defineEmits<{
   "open-entry": [item: LocalEntry];
   reload: [];
   home: [];
+  theme: [];
   "go-up": [];
   collapse: [];
 }>();

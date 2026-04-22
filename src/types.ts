@@ -3,6 +3,8 @@ export type EntryKind = "file" | "directory";
 export interface FileSystemHandleLike {
   readonly kind: EntryKind;
   readonly name: string;
+  queryPermission?(descriptor?: { mode?: "read" | "readwrite" }): Promise<PermissionState>;
+  requestPermission?(descriptor?: { mode?: "read" | "readwrite" }): Promise<PermissionState>;
 }
 
 export interface FileSystemFileHandleLike extends FileSystemHandleLike {
@@ -112,6 +114,7 @@ export type ReaderIconName =
   | "ico-panel-close"
   | "ico-panel-open"
   | "ico-refresh"
+  | "ico-theme"
   | "ico-up"
   | "ico-save"
   | "ico-edit";
