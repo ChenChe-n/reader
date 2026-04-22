@@ -15,7 +15,7 @@
         :style="{ minHeight: `${rowHeightPx(line.index)}px` }"
       >
         <span class="line-text-number">{{ line.number }}</span>
-        <span class="line-text-data" :style="line.style">{{ line.data || " " }}</span>
+        <span class="line-text-data" :style="line.style"><template v-if="line.chunks.length"><span v-for="chunk in line.chunks" :key="chunk.key" :style="chunk.style">{{ chunk.text }}</span></template><template v-else>{{ line.data || " " }}</template></span>
       </div>
     </div>
     <button
@@ -30,7 +30,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import type { LineTextDocument } from "../types";
+import type { LineTextDocument, LineTextSpan } from "../types";
 import { buildPrefixSum, topRowIndexForScroll } from "./lineText/variablePrefixScroll";
 import { useLineTextInput } from "./lineText/useLineTextInput";
 import { LINE_NUMBER_GUTTER_PX } from "./lineText/lineChrome";
@@ -110,8 +110,23 @@ const verticalThumb = computed(() =>
   )
 );
 
+interface VisibleLine {
+  index: number;
+  number: string;
+  data: string;
+  style: Record<string, string>;
+  chunks: LineTextChunk[];
+  spacer: boolean;
+}
+
+interface LineTextChunk {
+  key: string;
+  text: string;
+  style: Record<string, string>;
+}
+
 const visibleLines = computed(() => {
-  const rows: Array<{ index: number; number: string; data: string; style: Record<string, string>; spacer: boolean }> = [];
+  const rows: VisibleLine[] = [];
   for (let index = startIndex.value; index < endIndex.value; index += 1) rows.push(rowForIndex(index));
   return rows;
 });
@@ -127,15 +142,15 @@ function buildThumb(track: number, ratio: number, scroll: bigint, maxScroll: big
   return { width: size, height: size, left: offset + 2, top: offset + 2 };
 }
 
-function rowForIndex(index: number): { index: number; number: string; data: string; style: Record<string, string>; spacer: boolean } {
+function rowForIndex(index: number): VisibleLine {
   if (index >= props.document.lineCount + spacerLineCount.value) {
-    return { index, number: "", data: "", style: {}, spacer: true };
+    return { index, number: "", data: "", style: {}, chunks: [], spacer: true };
   }
   if (index >= props.document.lineCount) {
-    return { index, number: "", data: "", style: {}, spacer: true };
+    return { index, number: "", data: "", style: {}, chunks: [], spacer: true };
   }
   const line = props.document.lines[String(index)] || { data: "", style: {} };
-  return { index, number: String(index + 1), data: line.data, style: line.style, spacer: false };
+  return { index, number: String(index + 1), data: line.data, style: line.style, chunks: chunksForLine(line.data, line.spans), spacer: false };
 }
 
 /**
@@ -145,6 +160,21 @@ function rowForIndex(index: number): { index: number; number: string; data: stri
  */
 function lineForIndex(index: number): { data: string; style: Record<string, string> } {
   return props.document.lines[String(index)] || { data: "", style: {} };
+}
+
+function chunksForLine(data: string, spans: LineTextSpan[] | undefined): LineTextChunk[] {
+  if (!spans?.length) return [];
+  const chunks: LineTextChunk[] = [];
+  let cursor = 0;
+  spans.forEach((span, index) => {
+    const start = Math.max(0, Math.min(span.start, data.length));
+    const end = Math.max(start, Math.min(span.end, data.length));
+    if (start > cursor) chunks.push({ key: `plain-${index}`, text: data.slice(cursor, start), style: {} });
+    if (end > start) chunks.push({ key: `span-${index}`, text: data.slice(start, end), style: span.style });
+    cursor = end;
+  });
+  if (cursor < data.length) chunks.push({ key: "plain-tail", text: data.slice(cursor), style: {} });
+  return chunks;
 }
 
 function clampScroll(): void {

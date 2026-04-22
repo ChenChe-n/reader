@@ -71,17 +71,27 @@
     </div>
 
     <div class="preview-corner-actions">
-      <button class="svg-action preview-scroll-action" type="button" data-tooltip="返回顶部" aria-label="返回顶部" @click="scrollToTop">
+      <button class="svg-action preview-scroll-action" type="button" title="返回顶部" aria-label="返回顶部" @click="scrollToTop">
         <IconView name="ico-up" />
       </button>
-      <button class="svg-action" type="button" :data-tooltip="fullscreenTip" :aria-label="fullscreenTip" @click="$emit('toggle-fullscreen')">
+      <button class="svg-action" type="button" :title="fullscreenTip" :aria-label="fullscreenTip" @click="$emit('toggle-fullscreen')">
         <IconView :name="isPreviewMaximized ? 'ico-minimize' : 'ico-maximize'" />
+      </button>
+      <button
+        v-if="canToggleHtmlPreview && !previewEditing"
+        class="svg-action preview-html-mode-action"
+        type="button"
+        :title="htmlPreviewToggleTip"
+        :aria-label="htmlPreviewToggleTip"
+        @click="$emit('toggle-html-preview')"
+      >
+        <IconView :name="htmlPreviewMode === 'web' ? 'ico-code' : 'ico-web'" />
       </button>
       <button
         v-if="canEditPreview"
         class="svg-action preview-edit-action"
         type="button"
-        :data-tooltip="editToggleTip"
+        :title="editToggleTip"
         :aria-label="editToggleTip"
         @click="$emit('toggle-edit')"
       >
@@ -113,6 +123,8 @@ const props = defineProps<{
   hasFile: boolean;
   canSave: boolean;
   canEditPreview: boolean;
+  canToggleHtmlPreview: boolean;
+  htmlPreviewMode: "web" | "code";
   previewEditing: boolean;
   isPreviewMaximized: boolean;
   rootHandle: FileSystemDirectoryHandleLike | null;
@@ -128,6 +140,7 @@ const emit = defineEmits<{
   expand: [];
   "toggle-fullscreen": [];
   "toggle-edit": [];
+  "toggle-html-preview": [];
   "open-relative": [href: string];
 }>();
 
@@ -138,6 +151,7 @@ const htmlPreviewUrl = ref("about:blank");
 const iframeSandbox = "allow-forms allow-popups allow-scripts allow-modals allow-same-origin";
 const fullscreenTip = computed(() => (props.isPreviewMaximized ? "还原预览" : "最大化预览"));
 const editToggleTip = computed(() => (props.previewEditing ? "关闭编辑" : "编辑"));
+const htmlPreviewToggleTip = computed(() => (props.htmlPreviewMode === "web" ? "代码预览" : "网页预览"));
 const readTimingLabel = computed(() => formatDuration(props.previewTiming.readMs));
 const processTimingLabel = computed(() => formatDuration(props.previewTiming.processMs));
 

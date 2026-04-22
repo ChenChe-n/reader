@@ -39,6 +39,8 @@
         :has-file="Boolean(currentFile)"
         :can-save="canSave"
         :can-edit-preview="canEditPreview"
+        :can-toggle-html-preview="canToggleHtmlPreview"
+        :html-preview-mode="htmlPreviewMode"
         :preview-editing="previewEditing"
         :is-preview-maximized="previewMaximized"
         :root-handle="rootHandle"
@@ -49,6 +51,7 @@
         @download="downloadCurrentFile"
         @save="saveDraft"
         @toggle-edit="togglePreviewEdit"
+        @toggle-html-preview="toggleHtmlPreviewMode"
         @expand="sidebarCollapsed = false"
         @toggle-fullscreen="previewMaximized = !previewMaximized"
         @open-relative="openRelative"
@@ -101,8 +104,10 @@ const {
   draftText,
   previewEditing,
   canEditPreview,
+  canToggleHtmlPreview,
   canSave,
   editLineMode,
+  htmlPreviewMode,
   currentHandle,
   currentFileDirectoryPath,
   preview,
@@ -122,6 +127,7 @@ const {
   downloadCurrentFile,
   saveDraft,
   togglePreviewEdit,
+  toggleHtmlPreviewMode,
   createObjectUrl,
   resolveConfirmDialog
 } = reader;

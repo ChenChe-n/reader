@@ -1,4 +1,4 @@
-import { computed, reactive, ref, watch } from "vue";
+import { computed, markRaw, reactive, ref, watch } from "vue";
 import { pickDirectory, readDirectory } from "../api/localFiles";
 import type {
   FileSystemDirectoryHandleLike,
@@ -18,8 +18,11 @@ import { createLoadingState } from "./reader/loadingState";
 import { createArchiveDirectoryHandle, isArchiveFileName } from "./reader/archiveHandles";
 import { createSessionActions } from "./reader/sessionActions";
 import type { LineMode } from "./reader/workerLineStyles";
+import { lineTextPreview } from "./reader/workerLineDocument";
+import type { HtmlPreviewMode } from "./reader/types";
 
 const urlStore = createObjectUrlStore();
+const HTML_PREVIEW_MODE_KEY = "reader.htmlPreviewMode";
 
 /**
  * 提供阅读器页面的核心状态和动作。
@@ -37,6 +40,7 @@ export function useReader() {
   const currentFileHandle = ref<FileSystemFileHandleLike | null>(null);
   const lastWorkerMode = ref<TextPreviewWorkerMode | null>(null);
   const previewEditing = ref(false);
+  const htmlPreviewMode = ref<HtmlPreviewMode>(readHtmlPreviewMode());
   const draftText = ref("");
   const currentFileDirectoryPath = ref<string[]>([]);
   const searchKeyword = ref("");
@@ -58,6 +62,7 @@ export function useReader() {
     fileTitle,
     fileMeta,
     previewTiming,
+    htmlPreviewMode,
     loadAbortController,
     loadWorker,
     setPreview,
@@ -91,7 +96,8 @@ export function useReader() {
     const k = preview.kind;
     return (k === "lineText" || k === "markdown" || k === "html") && Boolean(lastWorkerMode.value);
   });
-  const editLineMode = computed<LineMode>(() => (lastWorkerMode.value as LineMode | null) ?? "text");
+  const editLineMode = computed<LineMode>(() => (lastWorkerMode.value === "html-code" ? "html" : (lastWorkerMode.value as LineMode | null) ?? "text"));
+  const canToggleHtmlPreview = computed(() => lastWorkerMode.value === "html" || lastWorkerMode.value === "html-code");
   const canSave = computed(
     () =>
       Boolean(
@@ -264,6 +270,21 @@ export function useReader() {
     }
   }
 
+  function toggleHtmlPreviewMode(): void {
+    htmlPreviewMode.value = htmlPreviewMode.value === "web" ? "code" : "web";
+    writeHtmlPreviewMode(htmlPreviewMode.value);
+    if (!currentFile.value || !canToggleHtmlPreview.value) return;
+    if (htmlPreviewMode.value === "web") {
+      lastWorkerMode.value = "html";
+      setPreview({ kind: "html", html: currentText.value });
+      return;
+    }
+    const next = lineTextPreview(currentText.value, "html");
+    if (next.kind === "lineText") next.lineText = markRaw(next.lineText);
+    lastWorkerMode.value = "html-code";
+    setPreview(next);
+  }
+
   return {
     entries,
     currentHandle,
@@ -275,8 +296,10 @@ export function useReader() {
     previewEditing,
     draftText,
     canEditPreview,
+    canToggleHtmlPreview,
     canSave,
     editLineMode,
+    htmlPreviewMode,
     preview,
     fileTitle,
     fileMeta,
@@ -296,9 +319,26 @@ export function useReader() {
     downloadCurrentFile: () => downloadCurrentFile(currentFile),
     saveDraft,
     togglePreviewEdit,
+    toggleHtmlPreviewMode,
     createObjectUrl: urlStore.create,
     resolveConfirmDialog
   };
+}
+
+function readHtmlPreviewMode(): HtmlPreviewMode {
+  try {
+    return localStorage.getItem(HTML_PREVIEW_MODE_KEY) === "code" ? "code" : "web";
+  } catch {
+    return "web";
+  }
+}
+
+function writeHtmlPreviewMode(mode: HtmlPreviewMode): void {
+  try {
+    localStorage.setItem(HTML_PREVIEW_MODE_KEY, mode);
+  } catch {
+    // Ignore storage failures; the current session still switches correctly.
+  }
 }
 
 /**

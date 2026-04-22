@@ -1,9 +1,13 @@
 :root {
   color-scheme: light;
-  --theme-bg: #f4f7fb;
-  --theme-panel: #ffffff;
-  --theme-text: #1f2937;
-  --theme-accent: #2563eb;
+  --theme-bg: #ffffff;
+  --theme-panel: #f3f3f3;
+  --theme-text: #1f1f1f;
+  --theme-accent: #007acc;
+  --syntax-comment: #008000;
+  --syntax-keyword: #0000ff;
+  --syntax-function: #795e26;
+  --syntax-string: #a31515;
   --bg: var(--theme-bg);
   --panel: var(--theme-panel);
   --text: var(--theme-text);

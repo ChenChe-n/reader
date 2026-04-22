@@ -7,6 +7,8 @@ import type {
   TextPreviewWorkerMode
 } from "../../types";
 
+export type HtmlPreviewMode = "web" | "code";
+
 export interface UrlStore {
   create(file: Blob): string;
   clear(): void;
@@ -21,6 +23,7 @@ export interface ReaderViewContext {
   fileTitle: Ref<string>;
   fileMeta: Ref<string>;
   previewTiming: Ref<PreviewTiming>;
+  htmlPreviewMode: Ref<HtmlPreviewMode>;
   loadVersion?: Ref<number>;
   loadAbortController?: Ref<AbortController | null>;
   loadWorker?: Ref<Worker | null>;

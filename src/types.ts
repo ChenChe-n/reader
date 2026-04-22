@@ -23,7 +23,23 @@ export interface FileSystemDirectoryHandleLike extends FileSystemHandleLike {
 export type LocalHandle = FileSystemFileHandleLike | FileSystemDirectoryHandleLike;
 
 /** 文本预览 Worker 使用的模式。 */
-export type TextPreviewWorkerMode = "markdown" | "text" | "json" | "html" | "fallback";
+export type TextPreviewWorkerMode =
+  | "markdown"
+  | "text"
+  | "json"
+  | "html"
+  | "html-code"
+  | "vue"
+  | "css"
+  | "typescript"
+  | "javascript"
+  | "python"
+  | "c"
+  | "cpp"
+  | "rust"
+  | "java"
+  | "shell"
+  | "fallback";
 
 export interface LocalEntry {
   name: string;
@@ -42,7 +58,14 @@ export interface RelativeFileResult {
 export interface LineTextLine {
   data: string;
   style: Record<string, string>;
+  spans?: LineTextSpan[];
   meta?: Record<string, string>;
+}
+
+export interface LineTextSpan {
+  start: number;
+  end: number;
+  style: Record<string, string>;
 }
 
 export interface LineTextDocument {
@@ -117,7 +140,9 @@ export type ReaderIconName =
   | "ico-theme"
   | "ico-up"
   | "ico-save"
-  | "ico-edit";
+  | "ico-edit"
+  | "ico-web"
+  | "ico-code";
 
 declare global {
   interface Window {

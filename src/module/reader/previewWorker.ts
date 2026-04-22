@@ -6,7 +6,23 @@ import { markdownPreview } from "./workerMarkdown";
 
 interface WorkerRequest {
   file: File;
-  mode: "markdown" | "text" | "json" | "html" | "fallback";
+  mode:
+    | "markdown"
+    | "text"
+    | "json"
+    | "html"
+    | "html-code"
+    | "vue"
+    | "css"
+    | "typescript"
+    | "javascript"
+    | "python"
+    | "c"
+    | "cpp"
+    | "rust"
+    | "java"
+    | "shell"
+    | "fallback";
 }
 
 interface WorkerResult {
@@ -64,7 +80,8 @@ function buildPreview(file: File, mode: WorkerRequest["mode"]): WorkerResult {
  */
 function previewForMode(text: string, mode: WorkerRequest["mode"]): Pick<WorkerResult, "preview" | "currentText" | "meta"> {
   if (mode === "markdown") return { preview: markdownPreview(text), currentText: text, meta: "Markdown 解析预览" };
-  if (mode === "html") return { preview: { kind: "html", html: text }, currentText: text };
+  if (mode === "html") return { preview: { kind: "html", html: text }, currentText: text, meta: lineTextMeta(mode) };
+  if (mode === "html-code") return { preview: lineTextPreview(text, "html"), currentText: text, meta: lineTextMeta(mode) };
   if (mode === "json") {
     const formattedText = formatJsonText(text);
     return { preview: lineTextPreview(formattedText, mode), currentText: formattedText, meta: lineTextMeta(mode) };
@@ -81,6 +98,18 @@ function lineTextMeta(mode: WorkerRequest["mode"]): string {
   const labels: Record<string, string> = {
     markdown: "Markdown 行文本",
     json: "JSON 行文本",
+    html: "HTML 网页预览",
+    "html-code": "HTML 代码预览",
+    vue: "Vue 行文本",
+    css: "CSS 行文本",
+    typescript: "TypeScript 行文本",
+    javascript: "JavaScript 行文本",
+    python: "Python 行文本",
+    c: "C 行文本",
+    cpp: "C++ 行文本",
+    rust: "Rust 行文本",
+    java: "Java 行文本",
+    shell: "Shell 行文本",
     text: "文本行",
     fallback: "文本行"
   };

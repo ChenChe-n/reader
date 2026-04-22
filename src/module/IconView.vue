@@ -30,7 +30,9 @@ import {
   RefreshCw,
   ArrowUp,
   Save,
-  SquarePen
+  SquarePen,
+  Globe2,
+  CodeXml
 } from "lucide-vue-next";
 import { computed } from "vue";
 import type { ReaderIconName } from "../types";
@@ -64,7 +66,9 @@ const icons = {
   "ico-refresh": RefreshCw,
   "ico-up": ArrowUp,
   "ico-save": Save,
-  "ico-edit": SquarePen
+  "ico-edit": SquarePen,
+  "ico-web": Globe2,
+  "ico-code": CodeXml
 };
 
 const iconComponent = computed(() => icons[props.name] || File);

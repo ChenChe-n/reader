@@ -69,7 +69,11 @@ const colorFields: Array<{ key: keyof ThemePalette; label: string }> = [
   { key: "background", label: "背景" },
   { key: "surface", label: "面板" },
   { key: "text", label: "文字" },
-  { key: "accent", label: "主体色" }
+  { key: "accent", label: "主体色" },
+  { key: "comment", label: "注释色" },
+  { key: "keyword", label: "关键字" },
+  { key: "function", label: "函数色" },
+  { key: "string", label: "字符串" }
 ];
 
 const modeLabel = computed(() => {

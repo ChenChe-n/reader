@@ -31,7 +31,7 @@ export function iconFor(item: LocalEntry): ReaderIconName {
 export function iconForExtension(ext: string): ReaderIconName {
   if (["md", "markdown"].includes(ext)) return "file-text";
   if (ext === "json") return "file-json";
-  if (["html", "htm"].includes(ext)) return "file-code";
+  if (CODE_EXTENSIONS.includes(ext)) return "file-code";
   if (ext === "txt") return "file-plain";
   if (["pdf", "xlsx", "xls", "csv", "doc", "docx", "psd"].includes(ext)) return "file-text";
   if (IMAGE_EXTENSIONS.includes(ext)) return "file-image";
@@ -63,6 +63,32 @@ export function fileKindLabel(ext: string): string {
     json: "JSON",
     html: "HTML",
     htm: "HTML",
+    vue: "Vue",
+    css: "CSS",
+    scss: "SCSS",
+    less: "Less",
+    ts: "TypeScript",
+    tsx: "TypeScript",
+    js: "JavaScript",
+    jsx: "JavaScript",
+    mjs: "JavaScript",
+    cjs: "JavaScript",
+    py: "Python",
+    pyw: "Python",
+    c: "C",
+    h: "C Header",
+    cpp: "C++",
+    cxx: "C++",
+    cc: "C++",
+    hpp: "C++ Header",
+    hxx: "C++ Header",
+    hh: "C++ Header",
+    rs: "Rust",
+    java: "Java",
+    sh: "Shell",
+    bash: "Shell",
+    zsh: "Shell",
+    ps1: "PowerShell",
     pdf: "PDF",
     xlsx: "Excel",
     xls: "Excel",
@@ -76,6 +102,37 @@ export function fileKindLabel(ext: string): string {
   if (AUDIO_EXTENSIONS.includes(ext)) return "Audio";
   return labels[ext] || "File";
 }
+
+const CODE_EXTENSIONS = [
+  "html",
+  "htm",
+  "vue",
+  "css",
+  "scss",
+  "less",
+  "ts",
+  "tsx",
+  "js",
+  "jsx",
+  "mjs",
+  "cjs",
+  "py",
+  "pyw",
+  "c",
+  "h",
+  "cpp",
+  "cxx",
+  "cc",
+  "hpp",
+  "hxx",
+  "hh",
+  "rs",
+  "java",
+  "sh",
+  "bash",
+  "zsh",
+  "ps1"
+];
 
 /**
  * 判断文件是否是图片。

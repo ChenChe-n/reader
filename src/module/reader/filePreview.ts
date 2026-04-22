@@ -77,7 +77,19 @@ export function createFilePreviewActions(context: FilePreviewContext) {
     if (isRichPreviewFile(ext)) return renderRichFile(file, ext, session, fileHandle);
     if (ext === "txt" || file.type.startsWith("text/plain")) return renderTextFile(file, ext, "text", session, fileHandle);
     if (ext === "json" || file.type === "application/json") return renderTextFile(file, ext, "json", session, fileHandle);
-    if (ext === "html" || ext === "htm" || file.type === "text/html") return renderTextFile(file, ext, "html", session, fileHandle);
+    if (ext === "vue") return renderTextFile(file, ext, "vue", session, fileHandle);
+    if (ext === "css" || ext === "scss" || ext === "less") return renderTextFile(file, ext, "css", session, fileHandle);
+    if (["ts", "tsx"].includes(ext)) return renderTextFile(file, ext, "typescript", session, fileHandle);
+    if (["js", "jsx", "mjs", "cjs"].includes(ext)) return renderTextFile(file, ext, "javascript", session, fileHandle);
+    if (["py", "pyw"].includes(ext)) return renderTextFile(file, ext, "python", session, fileHandle);
+    if (["c", "h"].includes(ext)) return renderTextFile(file, ext, "c", session, fileHandle);
+    if (["cpp", "cxx", "cc", "hpp", "hxx", "hh"].includes(ext)) return renderTextFile(file, ext, "cpp", session, fileHandle);
+    if (ext === "rs") return renderTextFile(file, ext, "rust", session, fileHandle);
+    if (ext === "java") return renderTextFile(file, ext, "java", session, fileHandle);
+    if (["sh", "bash", "zsh", "ps1"].includes(ext)) return renderTextFile(file, ext, "shell", session, fileHandle);
+    if (ext === "html" || ext === "htm" || file.type === "text/html") {
+      return renderTextFile(file, ext, context.htmlPreviewMode.value === "code" ? "html-code" : "html", session, fileHandle);
+    }
     if (isImageFile(file, ext)) return renderMediaFile(file, "image", fileHandle);
     if (isVideoFile(file, ext)) return renderMediaFile(file, "video", fileHandle);
     if (isAudioFile(file, ext)) return renderMediaFile(file, "audio", fileHandle);

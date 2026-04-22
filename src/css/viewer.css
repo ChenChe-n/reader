@@ -145,28 +145,6 @@
   background: var(--panel);
 }
 
-.svg-action::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 8px);
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 0.14s ease, transform 0.14s ease;
-  white-space: nowrap;
-  border-radius: 6px;
-  padding: 5px 8px;
-  background: color-mix(in srgb, var(--bg) 82%, var(--panel));
-  color: var(--panel);
-  font-size: 12px;
-  pointer-events: none;
-}
-
-.svg-action:hover::after {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 @media (max-width: 560px) {
   .viewer-head {
     gap: 8px;

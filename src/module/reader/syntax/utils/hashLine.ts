@@ -1,0 +1,40 @@
+import type { LineTextSpan } from "../../../../types";
+import { isIdentifierPart, isIdentifierStart, nextNonSpace, readQuotedString } from "./scan";
+import { tokensToSpans, type SyntaxToken } from "./tokens";
+
+export function hashLineSpans(line: string, keywords: ReadonlySet<string>): LineTextSpan[] {
+  const tokens: SyntaxToken[] = [];
+  let index = 0;
+  while (index < line.length) {
+    const char = line[index];
+    if (char === "#") {
+      tokens.push({ start: index, end: line.length, kind: "comment" });
+      break;
+    }
+    if (char === '"' || char === "'") {
+      const quote = char;
+      const triple = line.slice(index, index + 3) === quote.repeat(3);
+      const end = triple ? readTripleQuotedString(line, index, quote) : readQuotedString(line, index);
+      tokens.push({ start: index, end, kind: "string" });
+      index = end;
+      continue;
+    }
+    if (isIdentifierStart(char)) {
+      const start = index;
+      index += 1;
+      while (index < line.length && isIdentifierPart(line[index])) index += 1;
+      const word = line.slice(start, index);
+      if (keywords.has(word)) tokens.push({ start, end: index, kind: "keyword" });
+      else if (nextNonSpace(line, index) === "(") tokens.push({ start, end: index, kind: "function" });
+      continue;
+    }
+    index += 1;
+  }
+  return tokensToSpans(tokens, line.length);
+}
+
+function readTripleQuotedString(line: string, start: number, quote: string): number {
+  const close = line.indexOf(quote.repeat(3), start + 3);
+  return close >= 0 ? close + 3 : line.length;
+}
+

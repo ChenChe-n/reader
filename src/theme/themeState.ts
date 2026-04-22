@@ -7,6 +7,10 @@ export interface ThemePalette {
   surface: string;
   text: string;
   accent: string;
+  comment: string;
+  keyword: string;
+  function: string;
+  string: string;
 }
 
 export interface ThemeSettings {
@@ -17,24 +21,36 @@ export interface ThemeSettings {
 const STORAGE_KEY = "reader.theme";
 
 const LIGHT: ThemePalette = {
-  background: "#e0e0e0",
-  surface: "#ffffff",
-  text: "#1f2937",
-  accent: "#2563eb"
+  background: "#ffffff",
+  surface: "#f3f3f3",
+  text: "#1f1f1f",
+  accent: "#007acc",
+  comment: "#008000",
+  keyword: "#0000ff",
+  function: "#795e26",
+  string: "#a31515"
 };
 
 const DARK: ThemePalette = {
-  background: "#111827",
-  surface: "#1f2937",
-  text: "#f8fafc",
-  accent: "#60a5fa"
+  background: "#1e1e1e",
+  surface: "#252526",
+  text: "#d4d4d4",
+  accent: "#007acc",
+  comment: "#6a9955",
+  keyword: "#569cd6",
+  function: "#dcdcaa",
+  string: "#ce9178"
 };
 
 const DEFAULT_CUSTOM: ThemePalette = {
-  background: "#f5f0e8",
-  surface: "#fffaf2",
-  text: "#243041",
-  accent: "#0f766e"
+  background: "#1e1e1e",
+  surface: "#252526",
+  text: "#d4d4d4",
+  accent: "#007acc",
+  comment: "#6a9955",
+  keyword: "#569cd6",
+  function: "#dcdcaa",
+  string: "#ce9178"
 };
 
 const settings = reactive<ThemeSettings>(readThemeSettings());
@@ -67,7 +83,17 @@ export function useThemeState() {
   });
 
   watch(
-    () => [settings.mode, settings.custom.background, settings.custom.surface, settings.custom.text, settings.custom.accent],
+    () => [
+      settings.mode,
+      settings.custom.background,
+      settings.custom.surface,
+      settings.custom.text,
+      settings.custom.accent,
+      settings.custom.comment,
+      settings.custom.keyword,
+      settings.custom.function,
+      settings.custom.string
+    ],
     () => {
       writeThemeSettings(settings);
       applyTheme(activePalette.value, effectiveMode.value);
@@ -130,6 +156,10 @@ function applyTheme(palette: ThemePalette, mode: "light" | "dark" | "custom"): v
   root.style.setProperty("--theme-panel", palette.surface);
   root.style.setProperty("--theme-text", palette.text);
   root.style.setProperty("--theme-accent", palette.accent);
+  root.style.setProperty("--syntax-comment", palette.comment);
+  root.style.setProperty("--syntax-keyword", palette.keyword);
+  root.style.setProperty("--syntax-function", palette.function);
+  root.style.setProperty("--syntax-string", palette.string);
 }
 
 function readThemeSettings(): ThemeSettings {
@@ -162,7 +192,11 @@ function normalizePalette(value: Partial<ThemePalette> | undefined): ThemePalett
     background: isHexColor(value?.background) ? value.background : DEFAULT_CUSTOM.background,
     surface: isHexColor(value?.surface) ? value.surface : DEFAULT_CUSTOM.surface,
     text: isHexColor(value?.text) ? value.text : DEFAULT_CUSTOM.text,
-    accent: isHexColor(value?.accent) ? value.accent : DEFAULT_CUSTOM.accent
+    accent: isHexColor(value?.accent) ? value.accent : DEFAULT_CUSTOM.accent,
+    comment: isHexColor(value?.comment) ? value.comment : DEFAULT_CUSTOM.comment,
+    keyword: isHexColor(value?.keyword) ? value.keyword : DEFAULT_CUSTOM.keyword,
+    function: isHexColor(value?.function) ? value.function : DEFAULT_CUSTOM.function,
+    string: isHexColor(value?.string) ? value.string : DEFAULT_CUSTOM.string
   };
 }
 
