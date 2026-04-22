@@ -72,14 +72,11 @@ function initArchive(): void {
   if (archiveInitialized) return;
   Archive.init({
     getWorker: () => {
-      const source = workerSource.replace(
-        'N=new URL("libarchive.wasm",import.meta.url).href',
-        `N=${JSON.stringify(wasmUrl)}`
-      );
+      const source = workerSource
+        .replace('N=new URL("libarchive.wasm",import.meta.url).href', `N=${JSON.stringify(wasmUrl)}`)
+        .replaceAll("import.meta.url", JSON.stringify(wasmUrl));
       const url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
-      const worker = new Worker(url, { type: "module" });
-      URL.revokeObjectURL(url);
-      return worker;
+      return new Worker(url);
     }
   });
   archiveInitialized = true;
