@@ -1,20 +1,11 @@
 import { markRaw } from "vue";
-import type { FileSystemFileHandleLike, PreviewState, TextPreviewWorkerMode } from "../../types";
-import { extensionOf, fileKindLabel, isAudioFile, isImageFile, isVideoFile } from "../../utils/fileKind";
-import { formatBytes } from "../../utils/format";
+import type { FileSystemFileHandleLike, TextPreviewWorkerMode } from "../../types";
+import { extensionOf, isAudioFile, isImageFile, isVideoFile } from "../../utils/fileKind";
 import { mediaPreview } from "../../utils/previewFactory";
-import { CanceledPreviewLoad, createPreviewLoadSession, runPreviewWorkerDetached, type PreviewLoadSession } from "./loadSession";
+import { createPreviewLoadSession, runPreviewWorkerDetached, type PreviewLoadSession } from "./loadSession";
+import { baseMeta, commitPreview, commitWorkerResult, isCanceledLoad, type WorkerPreviewResult } from "./filePreviewCommit";
 import { buildRichPreview, isRichPreviewFile } from "./richPreview";
 import type { FilePreviewContext } from "./types";
-
-interface WorkerPreviewResult {
-  preview: PreviewState;
-  currentText: string;
-  meta?: string;
-  encoding?: string;
-  readMs: number;
-  processMs: number;
-}
 
 /**
  * 创建文件打开和预览操作。
@@ -65,38 +56,7 @@ export function createFilePreviewActions(context: FilePreviewContext) {
     const meta = suffixes.length ? `${baseMeta(file, ext)} · ${suffixes.join(" · ")}` : undefined;
     if (result.preview.kind === "lineText") result.preview.lineText = markRaw(result.preview.lineText);
     context.previewTiming.value = { readMs: result.readMs, processMs: result.processMs };
-    commitPreview(file, ext, result.currentText, result.preview, meta, handle, mode);
-  }
-
-  /**
-   * 写入当前文件基础状态。
-   * @param file 当前文件。
-   * @param ext 文件后缀。
-   * @param text 当前文本。
-   * @param preview 预览状态。
-   * @param meta 可选元信息覆盖。
-   * @param fileHandle 文件句柄。
-   * @param workerMode 文本 Worker 模式，媒体等非文本为 null。
-   * @returns 无返回值。
-   */
-  function commitPreview(
-    file: File,
-    ext: string,
-    text: string,
-    preview: PreviewState,
-    meta: string | undefined,
-    fileHandle: FileSystemFileHandleLike | null,
-    workerMode: TextPreviewWorkerMode | null
-  ): void {
-    context.currentFile.value = file;
-    context.currentText.value = text;
-    context.currentFileHandle.value = fileHandle;
-    context.lastWorkerMode.value = workerMode;
-    context.currentFileDirectoryPath.value = context.stack.value.slice(1);
-    context.fileTitle.value = file.name;
-    context.fileMeta.value = `${formatBytes(file.size)} · ${file.type || fileKindLabel(ext)} · ${new Date(file.lastModified).toLocaleString()}`;
-    if (meta) context.fileMeta.value = meta;
-    context.setPreview(preview);
+    commitPreview(context, file, ext, result.currentText, result.preview, meta, handle, mode);
   }
 
   /**
@@ -142,7 +102,7 @@ export function createFilePreviewActions(context: FilePreviewContext) {
   ): Promise<boolean> {
     if (!(await session.confirmTextRead(file))) return cancelCurrentFile();
     const result = await session.runWorker<WorkerPreviewResult>(file, mode);
-    commitWorkerResult(file, ext, result, session, fileHandle, mode);
+    commitWorkerResult(context, file, ext, result, session, fileHandle, mode);
     return true;
   }
 
@@ -156,7 +116,7 @@ export function createFilePreviewActions(context: FilePreviewContext) {
   function renderMediaFile(file: File, kind: "image" | "video" | "audio", fileHandle: FileSystemFileHandleLike): boolean {
     context.urlStore.clear();
     const preview = mediaPreview(file, kind, context.urlStore.create(file));
-    commitPreview(file, extensionOf(file.name), "", preview, undefined, fileHandle, null);
+    commitPreview(context, file, extensionOf(file.name), "", preview, undefined, fileHandle, null);
     return true;
   }
 
@@ -179,7 +139,7 @@ export function createFilePreviewActions(context: FilePreviewContext) {
     session.assertActive();
     session.setTiming(result.readMs, result.processMs);
     const meta = `${baseMeta(file, ext)} · ${result.meta}`;
-    commitPreview(file, ext, result.currentText, result.preview, meta, fileHandle, null);
+    commitPreview(context, file, ext, result.currentText, result.preview, meta, fileHandle, null);
     return true;
   }
 
@@ -202,34 +162,7 @@ export function createFilePreviewActions(context: FilePreviewContext) {
       return;
     }
     const result = await session.runWorker<WorkerPreviewResult>(file, "fallback");
-    commitWorkerResult(file, ext, result, session, fileHandle, "fallback");
-  }
-
-  /**
-   * 提交 Worker 完整结果。
-   * @param file 当前文件。
-   * @param ext 文件后缀。
-   * @param result Worker 结果。
-   * @param session 加载会话。
-   * @param fileHandle 文件句柄。
-   * @param workerMode Worker 模式。
-   * @returns 无返回值。
-   */
-  function commitWorkerResult(
-    file: File,
-    ext: string,
-    result: WorkerPreviewResult,
-    session: PreviewLoadSession,
-    fileHandle: FileSystemFileHandleLike,
-    workerMode: TextPreviewWorkerMode
-  ): void {
-    session.assertActive();
-    session.setTiming(result.readMs, result.processMs);
-    context.urlStore.clear();
-    const suffixes = [result.meta, result.encoding ? `编码 ${result.encoding}` : ""].filter(Boolean);
-    const meta = suffixes.length ? `${baseMeta(file, ext)} · ${suffixes.join(" · ")}` : undefined;
-    if (result.preview.kind === "lineText") result.preview.lineText = markRaw(result.preview.lineText);
-    commitPreview(file, ext, result.currentText, result.preview, meta, fileHandle, workerMode);
+    commitWorkerResult(context, file, ext, result, session, fileHandle, "fallback");
   }
 
   /**
@@ -239,25 +172,6 @@ export function createFilePreviewActions(context: FilePreviewContext) {
   function cancelCurrentFile(): true {
     context.previewTiming.value = { readMs: 0, processMs: 0 };
     return true;
-  }
-
-  /**
-   * 生成文件基础元信息。
-   * @param file 当前文件。
-   * @param ext 文件后缀。
-   * @returns 元信息文本。
-   */
-  function baseMeta(file: File, ext: string): string {
-    return `${formatBytes(file.size)} · ${file.type || fileKindLabel(ext)} · ${new Date(file.lastModified).toLocaleString()}`;
-  }
-
-  /**
-   * 判断错误是否来自旧加载会话取消。
-   * @param error 未知错误。
-   * @returns 是否为取消错误。
-   */
-  function isCanceledLoad(error: unknown): boolean {
-    return error instanceof CanceledPreviewLoad || (error instanceof DOMException && error.name === "AbortError");
   }
 
   return { openFile, saveTextAndRefresh };

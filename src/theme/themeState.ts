@@ -17,7 +17,7 @@ export interface ThemeSettings {
 const STORAGE_KEY = "reader.theme";
 
 const LIGHT: ThemePalette = {
-  background: "#f4f7fb",
+  background: "#e0e0e0",
   surface: "#ffffff",
   text: "#1f2937",
   accent: "#2563eb"

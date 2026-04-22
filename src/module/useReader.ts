@@ -1,6 +1,5 @@
 import { computed, reactive, ref, watch } from "vue";
 import { pickDirectory, readDirectory } from "../api/localFiles";
-import { clearReaderSession, ensureReadPermission, readReaderSession, writeReaderSession } from "../api/readerConfig";
 import type {
   FileSystemDirectoryHandleLike,
   FileSystemFileHandleLike,
@@ -17,6 +16,7 @@ import { createLargeTextConfirm } from "./reader/confirmDialog";
 import { copyCurrentText, downloadCurrentFile } from "./reader/fileCommands";
 import { createLoadingState } from "./reader/loadingState";
 import { createArchiveDirectoryHandle, isArchiveFileName } from "./reader/archiveHandles";
+import { createSessionActions } from "./reader/sessionActions";
 import type { LineMode } from "./reader/workerLineStyles";
 
 const urlStore = createObjectUrlStore();
@@ -73,6 +73,19 @@ export function useReader() {
     loadWorker,
     confirmLargeText,
     cancelLargeTextConfirm
+  });
+  const { rememberSession, restoreLastSession } = createSessionActions({
+    rootHandle,
+    currentHandle,
+    directoryTrail,
+    stack,
+    entries,
+    selectedName,
+    searchKeyword,
+    loadDirectory,
+    openPreviewFile,
+    showEmpty,
+    showNotice
   });
   const canEditPreview = computed(() => {
     const k = preview.kind;
@@ -221,42 +234,6 @@ export function useReader() {
   }
 
   /**
-   * 尝试恢复上次打开的目录和文件。
-   * @returns 异步完成信号。
-   */
-  async function restoreLastSession(): Promise<void> {
-    try {
-      const session = await readReaderSession();
-      if (!session) return;
-      if (!(await ensureReadPermission(session.rootHandle))) {
-        throw new Error("缺少读取权限");
-      }
-      const restoreResult = await getDirectoryFromPath(session.rootHandle, session.directoryPath);
-      rootHandle.value = session.rootHandle;
-      directoryTrail.value = restoreResult.trail;
-      stack.value = [session.rootHandle.name || session.rootName || "本地目录", ...session.directoryPath];
-      selectedName.value = session.fileName;
-      searchKeyword.value = "";
-      await loadDirectory(restoreResult.directory);
-      if (session.fileName) {
-        const fileHandle = await restoreResult.directory.getFileHandle(session.fileName);
-        await openPreviewFile(session.fileName, fileHandle);
-      } else {
-        showEmpty("已恢复上次目录", "选择左侧文件进行预览。");
-      }
-    } catch {
-      await clearReaderSession();
-      rootHandle.value = null;
-      currentHandle.value = null;
-      directoryTrail.value = [];
-      stack.value = [];
-      entries.value = [];
-      selectedName.value = "";
-      showNotice("上次打开的目录或文件无法恢复，已清空记录。请重新选择目录。");
-    }
-  }
-
-  /**
    * 切换预览/原始文本编辑模式。
    * @returns 无返回值。
    */
@@ -285,41 +262,6 @@ export function useReader() {
     } catch (error) {
       window.alert(`保存失败：${(error as Error).message}`);
     }
-  }
-
-  /**
-   * 静默保存当前目录和可选文件名。
-   * @param fileName 当前文件名。
-   * @returns 无返回值。
-   */
-  function rememberSession(fileName = ""): void {
-    if (!rootHandle.value) return;
-    void writeReaderSession({
-      rootHandle: rootHandle.value,
-      directoryPath: stack.value.slice(1),
-      fileName
-    }).catch(error => {
-      console.warn("保存阅读器配置失败", error);
-    });
-  }
-
-  /**
-   * 根据根目录和路径片段定位目录。
-   * @param root 根目录句柄。
-   * @param path 路径片段。
-   * @returns 目录和轨迹。
-   */
-  async function getDirectoryFromPath(
-    root: FileSystemDirectoryHandleLike,
-    path: string[]
-  ): Promise<{ directory: FileSystemDirectoryHandleLike; trail: FileSystemDirectoryHandleLike[] }> {
-    let directory = root;
-    const trail = [root];
-    for (const part of path) {
-      directory = await directory.getDirectoryHandle(part);
-      trail.push(directory);
-    }
-    return { directory, trail };
   }
 
   return {

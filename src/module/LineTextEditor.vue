@@ -42,13 +42,13 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { LineMode } from "./reader/workerLineStyles";
 import { styleForLine } from "./reader/workerLineStyles";
-import { heuristicWrappedHeightPx, wrappedBlockHeightPx } from "./lineText/pretextWrapHeight";
 import { buildPrefixSum, topRowIndexForScroll } from "./lineText/variablePrefixScroll";
 import { useLineTextInput } from "./lineText/useLineTextInput";
 import { LINE_NUMBER_GUTTER_PX } from "./lineText/lineChrome";
 import { toFixed } from "./lineText/useFixedScroller";
 import { useViewportResizeObserver } from "./lineText/useViewportResizeObserver";
 import { logicalLinesToText, textToLogicalLines } from "./lineText/splitJoinLines";
+import { useWrappedLineHeights } from "./lineText/useWrappedLineHeights";
 
 const props = defineProps<{
   modelValue: string;
@@ -66,9 +66,6 @@ const lineDataPaddingPx = 24;
 
 const viewportRef = ref<HTMLElement | null>(null);
 const lines = ref<string[]>(textToLogicalLines(props.modelValue));
-const lineHeights = ref<number[]>([]);
-const measurePassGen = ref(0);
-let idleHeightsHandle: number | null = null;
 
 const viewportHeight = ref(0);
 const viewportWidth = ref(0);
@@ -76,6 +73,16 @@ const scrollYFixed = ref(0n);
 const scrollXFixed = ref(0n);
 
 const textColumnWidth = computed(() => Math.max(1, viewportWidth.value - lineNumberGutterPx - lineDataPaddingPx));
+const { lineHeights, bootstrapHeights, patchLineHeight, heightForLineText, cleanupHeights } = useWrappedLineHeights(
+  {
+    lineCount: () => lines.value.length,
+    lineText: index => lines.value[index] ?? "",
+    lineStyle: index => styleForLine(lines.value[index] ?? "", props.lineMode)
+  },
+  textColumnWidth,
+  LINE_H,
+  clampScroll
+);
 
 const visibleRowEst = computed(() => Math.max(Math.ceil(viewportHeight.value / LINE_H), 1));
 const spacerLineCount = computed(() => Math.max(visibleRowEst.value - 1, 1));
@@ -174,68 +181,6 @@ function resetScroll(): void {
   scrollXFixed.value = 0n;
 }
 
-function cancelIdleHeights(): void {
-  if (idleHeightsHandle === null) return;
-  cancelIdleCallback(idleHeightsHandle);
-  idleHeightsHandle = null;
-}
-
-function heightForLineText(text: string): number {
-  return wrappedBlockHeightPx(text, styleForLine(text, props.lineMode), textColumnWidth.value, LINE_H);
-}
-
-function schedulePreciseHeights(gen: number): void {
-  cancelIdleHeights();
-  const wrapW = textColumnWidth.value;
-  const n = lines.value.length;
-  const arr = lineHeights.value.length === n ? lineHeights.value.slice() : new Array(n);
-  let i = 0;
-  const step: IdleRequestCallback = deadline => {
-    if (measurePassGen.value !== gen) return;
-    const BATCH = 256;
-    let batch = 0;
-    while (i < n && batch < BATCH) {
-      const t = lines.value[i] ?? "";
-      arr[i] = wrappedBlockHeightPx(t, styleForLine(t, props.lineMode), wrapW, LINE_H);
-      i += 1;
-      batch += 1;
-      if (deadline.timeRemaining() < 2 && i < n && batch >= 64) break;
-    }
-    lineHeights.value = arr;
-    clampScroll();
-    if (i >= n) {
-      idleHeightsHandle = null;
-      return;
-    }
-    idleHeightsHandle = requestIdleCallback(step, { timeout: 120 });
-  };
-  idleHeightsHandle = requestIdleCallback(step, { timeout: 120 });
-}
-
-function bootstrapHeights(): void {
-  measurePassGen.value += 1;
-  const gen = measurePassGen.value;
-  cancelIdleHeights();
-  const wrapW = textColumnWidth.value;
-  const n = lines.value.length;
-  const arr = new Array(n);
-  for (let i = 0; i < n; i += 1) {
-    const t = lines.value[i] ?? "";
-    arr[i] = heuristicWrappedHeightPx(t.length, wrapW, LINE_H);
-  }
-  lineHeights.value = arr;
-  clampScroll();
-  schedulePreciseHeights(gen);
-}
-
-function patchLineHeight(index: number): void {
-  const t = lines.value[index] ?? "";
-  const h = lineHeights.value.slice();
-  h[index] = heightForLineText(t);
-  lineHeights.value = h;
-  clampScroll();
-}
-
 function emitDocument(): void {
   emit("update:modelValue", logicalLinesToText(lines.value));
 }
@@ -269,8 +214,8 @@ function onLineKeydown(index: number, event: KeyboardEvent): void {
     lines.value[index] = left;
     lines.value.splice(index + 1, 0, right);
     const h = lineHeights.value.slice();
-    h[index] = heightForLineText(left);
-    h.splice(index + 1, 0, heightForLineText(right));
+    h[index] = heightForLineText(left, styleForLine(left, props.lineMode));
+    h.splice(index + 1, 0, heightForLineText(right, styleForLine(right, props.lineMode)));
     lineHeights.value = h;
     emitDocument();
     nextTick(() => {
@@ -287,7 +232,7 @@ function onLineKeydown(index: number, event: KeyboardEvent): void {
     lines.value[index - 1] = merged;
     lines.value.splice(index, 1);
     const h = lineHeights.value.slice();
-    h[index - 1] = heightForLineText(merged);
+    h[index - 1] = heightForLineText(merged, styleForLine(merged, props.lineMode));
     h.splice(index, 1);
     lineHeights.value = h;
     emitDocument();
@@ -344,8 +289,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  measurePassGen.value += 1;
-  cancelIdleHeights();
+  cleanupHeights();
   cleanupInput();
 });
 

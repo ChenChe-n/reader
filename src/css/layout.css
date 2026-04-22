@@ -52,7 +52,7 @@
 
 .sidebar,
 .viewer {
-  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);

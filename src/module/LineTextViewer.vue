@@ -31,12 +31,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { LineTextDocument } from "../types";
-import { heuristicWrappedHeightPx, wrappedBlockHeightPx } from "./lineText/pretextWrapHeight";
 import { buildPrefixSum, topRowIndexForScroll } from "./lineText/variablePrefixScroll";
 import { useLineTextInput } from "./lineText/useLineTextInput";
 import { LINE_NUMBER_GUTTER_PX } from "./lineText/lineChrome";
 import { toFixed } from "./lineText/useFixedScroller";
 import { useViewportResizeObserver } from "./lineText/useViewportResizeObserver";
+import { useWrappedLineHeights } from "./lineText/useWrappedLineHeights";
 
 const props = defineProps<{
   document: LineTextDocument;
@@ -51,11 +51,18 @@ const viewportHeight = ref(0);
 const viewportWidth = ref(0);
 const scrollYFixed = ref(0n);
 const scrollXFixed = ref(0n);
-const lineHeights = ref<number[]>([]);
-const measurePassGen = ref(0);
-let idleHeightsHandle: number | null = null;
 
 const textColumnWidth = computed(() => Math.max(1, viewportWidth.value - lineNumberGutterPx - lineDataPaddingPx));
+const { lineHeights, bootstrapHeights, cleanupHeights } = useWrappedLineHeights(
+  {
+    lineCount: () => props.document.lineCount,
+    lineText: index => lineForIndex(index).data,
+    lineStyle: index => lineForIndex(index).style
+  },
+  textColumnWidth,
+  LINE_H,
+  clampScroll
+);
 
 const visibleRowEst = computed(() => Math.max(Math.ceil(viewportHeight.value / LINE_H), 1));
 const spacerLineCount = computed(() => Math.max(visibleRowEst.value - 1, 1));
@@ -131,6 +138,15 @@ function rowForIndex(index: number): { index: number; number: string; data: stri
   return { index, number: String(index + 1), data: line.data, style: line.style, spacer: false };
 }
 
+/**
+ * 获取文档原始行数据。
+ * @param index 行索引。
+ * @returns 行文本和样式。
+ */
+function lineForIndex(index: number): { data: string; style: Record<string, string> } {
+  return props.document.lines[String(index)] || { data: "", style: {} };
+}
+
 function clampScroll(): void {
   scrollYFixed.value = clampBig(scrollYFixed.value, maxScrollYFixed.value);
   scrollXFixed.value = 0n;
@@ -146,56 +162,8 @@ function resetScroll(): void {
   scrollXFixed.value = 0n;
 }
 
-function cancelIdleHeights(): void {
-  if (idleHeightsHandle === null) return;
-  cancelIdleCallback(idleHeightsHandle);
-  idleHeightsHandle = null;
-}
-
-function schedulePreciseHeights(doc: LineTextDocument, gen: number): void {
-  cancelIdleHeights();
-  const wrapW = textColumnWidth.value;
-  const arr = lineHeights.value.length === doc.lineCount ? lineHeights.value.slice() : new Array(doc.lineCount);
-  let i = 0;
-  const step: IdleRequestCallback = deadline => {
-    if (measurePassGen.value !== gen) return;
-    const BATCH = 256;
-    let batch = 0;
-    while (i < doc.lineCount && batch < BATCH) {
-      const line = doc.lines[String(i)] || { data: "", style: {} };
-      arr[i] = wrappedBlockHeightPx(line.data, line.style, wrapW, LINE_H);
-      i += 1;
-      batch += 1;
-      if (deadline.timeRemaining() < 2 && i < doc.lineCount && batch >= 64) break;
-    }
-    lineHeights.value = arr;
-    clampScroll();
-    if (i >= doc.lineCount) {
-      idleHeightsHandle = null;
-      return;
-    }
-    idleHeightsHandle = requestIdleCallback(step, { timeout: 120 });
-  };
-  idleHeightsHandle = requestIdleCallback(step, { timeout: 120 });
-}
-
-function bootstrapHeights(doc: LineTextDocument): void {
-  measurePassGen.value += 1;
-  const gen = measurePassGen.value;
-  cancelIdleHeights();
-  const wrapW = textColumnWidth.value;
-  const arr = new Array(doc.lineCount);
-  for (let i = 0; i < doc.lineCount; i += 1) {
-    const line = doc.lines[String(i)] || { data: "", style: {} };
-    arr[i] = heuristicWrappedHeightPx(line.data.length, wrapW, LINE_H);
-  }
-  lineHeights.value = arr;
-  clampScroll();
-  schedulePreciseHeights(doc, gen);
-}
-
 function restartForDocument(): void {
-  bootstrapHeights(props.document);
+  bootstrapHeights();
 }
 
 function updateViewport(): void {
@@ -245,8 +213,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  measurePassGen.value += 1;
-  cancelIdleHeights();
+  cleanupHeights();
   cleanupInput();
 });
 
