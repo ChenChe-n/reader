@@ -7,6 +7,20 @@
 .layout.preview-maximized .viewer {
   border-radius: 0;
   border: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.layout.preview-maximized .viewer-head {
+  display: none;
+}
+
+.layout.preview-maximized .content {
+  padding: 0;
+}
+
+.layout.preview-maximized .preview-scroll-action,
+.layout.preview-maximized .preview-edit-action {
+  display: none;
 }
 
 .viewer-head {

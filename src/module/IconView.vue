@@ -27,7 +27,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   RefreshCw,
-  ArrowUp
+  ArrowUp,
+  Save,
+  SquarePen
 } from "lucide-vue-next";
 import { computed } from "vue";
 import type { ReaderIconName } from "../types";
@@ -58,7 +60,9 @@ const icons = {
   "ico-panel-close": PanelLeftClose,
   "ico-panel-open": PanelLeftOpen,
   "ico-refresh": RefreshCw,
-  "ico-up": ArrowUp
+  "ico-up": ArrowUp,
+  "ico-save": Save,
+  "ico-edit": SquarePen
 };
 
 const iconComponent = computed(() => icons[props.name] || File);

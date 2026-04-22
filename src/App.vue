@@ -28,18 +28,25 @@
       ></button>
 
       <PreviewPane
+        v-model:draft-text="draftText"
         :preview="preview"
         :file-title="fileTitle"
         :file-meta="fileMeta"
         :preview-timing="previewTiming"
         :has-text="Boolean(currentText)"
         :has-file="Boolean(currentFile)"
+        :can-save="canSave"
+        :can-edit-preview="canEditPreview"
+        :preview-editing="previewEditing"
         :is-preview-maximized="previewMaximized"
         :root-handle="rootHandle"
         :base-path-parts="currentFileDirectoryPath"
         :create-object-url="createObjectUrl"
+        :edit-line-mode="editLineMode"
         @copy="copyCurrentText"
         @download="downloadCurrentFile"
+        @save="saveDraft"
+        @toggle-edit="togglePreviewEdit"
         @expand="sidebarCollapsed = false"
         @toggle-fullscreen="previewMaximized = !previewMaximized"
         @open-relative="openRelative"
@@ -69,6 +76,11 @@ const {
   searchKeyword,
   currentFile,
   currentText,
+  draftText,
+  previewEditing,
+  canEditPreview,
+  canSave,
+  editLineMode,
   currentHandle,
   currentFileDirectoryPath,
   preview,
@@ -85,6 +97,8 @@ const {
   goHome,
   copyCurrentText,
   downloadCurrentFile,
+  saveDraft,
+  togglePreviewEdit,
   createObjectUrl,
   resolveConfirmDialog
 } = reader;

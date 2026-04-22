@@ -8,6 +8,7 @@ export interface FileSystemHandleLike {
 export interface FileSystemFileHandleLike extends FileSystemHandleLike {
   readonly kind: "file";
   getFile(): Promise<File>;
+  createWritable?(options?: { keepExistingData?: boolean }): Promise<FileSystemWritableFileStream>;
 }
 
 export interface FileSystemDirectoryHandleLike extends FileSystemHandleLike {
@@ -18,6 +19,9 @@ export interface FileSystemDirectoryHandleLike extends FileSystemHandleLike {
 }
 
 export type LocalHandle = FileSystemFileHandleLike | FileSystemDirectoryHandleLike;
+
+/** 文本预览 Worker 使用的模式。 */
+export type TextPreviewWorkerMode = "markdown" | "text" | "json" | "html" | "fallback";
 
 export interface LocalEntry {
   name: string;
@@ -30,6 +34,7 @@ export interface RelativeFileResult {
   handle: FileSystemFileHandleLike;
   directory: FileSystemDirectoryHandleLike;
   directoryPath: string[];
+  directoryTrail?: FileSystemDirectoryHandleLike[];
 }
 
 export interface LineTextLine {
@@ -43,12 +48,39 @@ export interface LineTextDocument {
   lineCount: number;
 }
 
+export interface SpreadsheetCell {
+  row: number;
+  col: number;
+  value: string;
+}
+
+export interface SpreadsheetMerge {
+  startRow: number;
+  startCol: number;
+  endRow: number;
+  endCol: number;
+}
+
+export interface SpreadsheetSheet {
+  name: string;
+  rowCount: number;
+  colCount: number;
+  cells: Record<string, SpreadsheetCell>;
+  merges: SpreadsheetMerge[];
+}
+
+export interface SpreadsheetDocument {
+  sheets: SpreadsheetSheet[];
+}
+
 export type PreviewState =
   | { kind: "empty"; title?: string; message?: string; html?: string }
   | { kind: "notice"; message?: string }
   | { kind: "markdown"; html?: string }
   | { kind: "html"; html?: string; sandbox?: string }
+  | { kind: "document"; url?: string; fileName?: string; documentKind?: "pdf" }
   | { kind: "media"; mediaKind?: "image" | "video" | "audio"; url?: string; fileName?: string }
+  | { kind: "spreadsheet"; spreadsheet: SpreadsheetDocument }
   | { kind: "lineText"; lineText: LineTextDocument };
 
 export interface PreviewTiming {
@@ -80,7 +112,9 @@ export type ReaderIconName =
   | "ico-panel-close"
   | "ico-panel-open"
   | "ico-refresh"
-  | "ico-up";
+  | "ico-up"
+  | "ico-save"
+  | "ico-edit";
 
 declare global {
   interface Window {

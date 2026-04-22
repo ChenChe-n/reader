@@ -22,6 +22,8 @@ export function createViewStateActions(context: ReaderViewContext) {
     context.urlStore.clear();
     context.currentFile.value = null;
     context.currentText.value = "";
+    context.currentFileHandle.value = null;
+    context.lastWorkerMode.value = null;
     context.currentFileDirectoryPath.value = [];
     context.fileTitle.value = "未打开文件";
     context.fileMeta.value = "支持 文本、图片、音频和视频";

@@ -43,6 +43,81 @@
   background: white;
 }
 
+.document-frame {
+  width: 100%;
+  height: 100%;
+  min-height: calc(100vh - 160px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f9fc;
+}
+
+.office-preview {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px;
+  color: #172033;
+  font: 14px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.office-sheet,
+.office-page {
+  margin: 0 0 18px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 38px rgba(29, 41, 57, 0.08);
+  overflow: hidden;
+}
+
+.office-title {
+  margin: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e6edf6;
+  background: #f7f9fc;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.office-scroll {
+  overflow: auto;
+}
+
+.office-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.office-table th,
+.office-table td {
+  min-width: 96px;
+  max-width: 420px;
+  padding: 7px 10px;
+  border: 1px solid #e6edf6;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.office-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #eef4fb;
+  color: #475467;
+  font-weight: 600;
+  text-align: left;
+}
+
+.office-doc {
+  padding: 22px 28px;
+}
+
+.office-doc img {
+  max-width: 100%;
+  height: auto;
+}
+
 .media-stage {
   width: 100%;
   height: 100%;
@@ -94,7 +169,6 @@
   line-height: 22px;
   cursor: default;
   user-select: text;
-  --line-text-x: 0px;
 }
 
 .line-text-panning {
@@ -115,9 +189,21 @@
 
 .line-text-row {
   display: grid;
-  grid-template-columns: 72px max-content;
+  grid-template-columns: 88px max-content;
   min-width: max-content;
   height: 22px;
+}
+
+.line-text-row-wrap {
+  grid-template-columns: 88px minmax(0, 1fr);
+  min-width: 0;
+  width: 100%;
+  height: auto;
+  align-items: start;
+}
+
+.line-text-viewer-wrap .line-text-window {
+  width: 100%;
 }
 
 .line-text-number {
@@ -129,13 +215,25 @@
   background: #f7f9fc;
   color: var(--muted);
   text-align: right;
+  font-variant-numeric: tabular-nums;
+  min-width: 7ch;
+  box-sizing: border-box;
   user-select: none;
+}
+
+.line-text-row-wrap .line-text-number {
+  align-self: start;
 }
 
 .line-text-data {
   padding: 0 12px;
   white-space: pre;
-  transform: translateX(calc(-1 * var(--line-text-x)));
+}
+
+.line-text-row-wrap .line-text-data {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .line-text-row-spacer .line-text-number {
@@ -170,4 +268,45 @@
   left: 0;
   bottom: 3px;
   height: 8px;
+}
+
+.line-text-editor-wrap {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.line-text-editor.line-text-viewer {
+  flex: 1;
+  min-height: 0;
+}
+
+.line-text-editor-input {
+  border: 0;
+  outline: none;
+  background: transparent;
+  margin: 0;
+  padding: 0 12px;
+  width: 100%;
+  min-height: 22px;
+  line-height: 22px;
+  font: inherit;
+  color: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  resize: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.line-text-editor-row {
+  min-width: 0;
+  width: 100%;
+}
+
+.line-text-editor-spacer {
+  visibility: hidden;
 }

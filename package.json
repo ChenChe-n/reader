@@ -9,14 +9,19 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "@chenglou/pretext": "^0.0.5",
     "@vitejs/plugin-vue": "^5.2.4",
+    "ag-psd": "^30.1.1",
     "dompurify": "^3.1.6",
+    "libarchive.js": "^2.0.2",
     "lucide-vue-next": "^0.468.0",
+    "mammoth": "^1.12.0",
     "marked": "^12.0.2",
     "typescript": "^5.5.4",
     "vite": "^5.4.11",
     "vue": "^3.5.13",
-    "vue-tsc": "^2.1.10"
+    "vue-tsc": "^2.1.10",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "vite-plugin-singlefile": "^2.3.3"

@@ -33,6 +33,7 @@ export function iconForExtension(ext: string): ReaderIconName {
   if (ext === "json") return "file-json";
   if (["html", "htm"].includes(ext)) return "file-code";
   if (ext === "txt") return "file-plain";
+  if (["pdf", "xlsx", "xls", "csv", "doc", "docx", "psd"].includes(ext)) return "file-text";
   if (IMAGE_EXTENSIONS.includes(ext)) return "file-image";
   if (VIDEO_EXTENSIONS.includes(ext)) return "file-video";
   if (AUDIO_EXTENSIONS.includes(ext)) return "file-audio";
@@ -61,7 +62,14 @@ export function fileKindLabel(ext: string): string {
     txt: "Text",
     json: "JSON",
     html: "HTML",
-    htm: "HTML"
+    htm: "HTML",
+    pdf: "PDF",
+    xlsx: "Excel",
+    xls: "Excel",
+    csv: "CSV",
+    doc: "Word",
+    docx: "Word",
+    psd: "PSD"
   };
   if (IMAGE_EXTENSIONS.includes(ext)) return "Image";
   if (VIDEO_EXTENSIONS.includes(ext)) return "Video";
