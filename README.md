@@ -1,6 +1,6 @@
-# MD 阅读器
+# 阅读器
 
-基于 Vue 3 + TypeScript 的本地 Markdown/文档阅读器，保留原 `md-reader.html` 的核心体验：
+基于 Vue 3 + TypeScript 的本地阅读器
 
 - 选择本地文件夹并浏览目录。
 - 预览 Markdown、HTML、JSON、纯文本、图片、音频和视频。
