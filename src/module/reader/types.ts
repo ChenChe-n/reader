@@ -1,5 +1,11 @@
 import type { Ref } from "vue";
-import type { FileSystemDirectoryHandleLike, PreviewState, PreviewTiming } from "../../types";
+import type {
+  FileSystemDirectoryHandleLike,
+  FileSystemFileHandleLike,
+  PreviewState,
+  PreviewTiming,
+  TextPreviewWorkerMode
+} from "../../types";
 
 export interface UrlStore {
   create(file: Blob): string;
@@ -9,6 +15,8 @@ export interface UrlStore {
 export interface ReaderViewContext {
   currentFile: Ref<File | null>;
   currentText: Ref<string>;
+  currentFileHandle: Ref<FileSystemFileHandleLike | null>;
+  lastWorkerMode: Ref<TextPreviewWorkerMode | null>;
   currentFileDirectoryPath: Ref<string[]>;
   fileTitle: Ref<string>;
   fileMeta: Ref<string>;

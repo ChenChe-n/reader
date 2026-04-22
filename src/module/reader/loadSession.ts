@@ -1,6 +1,16 @@
 import type { FilePreviewContext } from "./types";
 import PreviewWorker from "./previewWorker?worker&inline";
 
+/** Worker 返回的预览结果形状（与 filePreview 中一致）。 */
+export interface PreviewWorkerMessage {
+  preview: import("../../types").PreviewState;
+  currentText: string;
+  meta?: string;
+  encoding?: string;
+  readMs: number;
+  processMs: number;
+}
+
 export class CanceledPreviewLoad extends Error {}
 
 export interface PreviewLoadSession {
@@ -129,4 +139,28 @@ export function createPreviewLoadSession(context: FilePreviewContext): PreviewLo
   }
 
   return { token, signal: controller.signal, measureRead, runWorker, confirmTextRead, setTiming, updateTiming, assertActive };
+}
+
+/**
+ * 在独立 Worker 中运行预览（不绑定加载会话，用于保存后刷新等）。
+ * @param file 文件内容。
+ * @param mode 预览模式。
+ * @returns Worker 结果。
+ */
+export function runPreviewWorkerDetached(file: File, mode: string): Promise<PreviewWorkerMessage> {
+  return new Promise((resolve, reject) => {
+    const worker = new PreviewWorker();
+    const cleanup = () => worker.terminate();
+    worker.onmessage = (event: MessageEvent) => {
+      cleanup();
+      const message = event.data as { ok: true; value: PreviewWorkerMessage } | { ok: false; error: string };
+      if (message.ok) resolve(message.value);
+      else reject(new Error(message.error));
+    };
+    worker.onerror = (event: ErrorEvent) => {
+      cleanup();
+      reject(event.error || new Error(event.message));
+    };
+    worker.postMessage({ file, mode });
+  });
 }

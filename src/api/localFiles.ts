@@ -8,7 +8,7 @@ export async function pickDirectory(): Promise<FileSystemDirectoryHandleLike> {
   if (!window.showDirectoryPicker) {
     throw new Error("当前浏览器不支持本地目录选择。");
   }
-  return window.showDirectoryPicker({ mode: "read" });
+  return window.showDirectoryPicker({ mode: "readwrite" });
 }
 
 /**
@@ -46,6 +46,42 @@ export async function getFileFromRelativePath(
   }
   const handle = await directory.getFileHandle(fileName);
   return { file: await handle.getFile(), handle, directory, directoryPath };
+}
+
+/**
+ * 从当前目录轨迹和相对路径定位文件，支持压缩包虚拟目录。
+ * @param directoryTrail 当前目录轨迹。
+ * @param stackLabel 当前面包屑标签。
+ * @param relativePath 相对路径。
+ * @returns 文件定位结果，找不到时返回 null。
+ */
+export async function getFileFromDirectoryTrail(
+  directoryTrail: FileSystemDirectoryHandleLike[],
+  stackLabel: string[],
+  relativePath: string
+): Promise<RelativeFileResult | null> {
+  if (!directoryTrail.length) return null;
+  const parts = normalizeRelativePartsAllowUp(relativePath);
+  if (!parts.length) return null;
+  const nextTrail = [...directoryTrail];
+  const nextStack = [...stackLabel];
+  let directory = nextTrail[nextTrail.length - 1];
+  for (const part of parts.slice(0, -1)) {
+    if (part === "..") {
+      if (nextTrail.length <= 1) return null;
+      nextTrail.pop();
+      nextStack.pop();
+      directory = nextTrail[nextTrail.length - 1];
+      continue;
+    }
+    directory = await directory.getDirectoryHandle(part);
+    nextTrail.push(directory);
+    nextStack.push(part);
+  }
+  const fileName = parts[parts.length - 1];
+  if (fileName === "..") return null;
+  const handle = await directory.getFileHandle(fileName);
+  return { file: await handle.getFile(), handle, directory, directoryPath: nextStack.slice(1), directoryTrail: nextTrail };
 }
 
 /**
@@ -118,4 +154,16 @@ function normalizeRelativeParts(basePathParts: string[], relativePath: string): 
     targetParts.push(part);
   }
   return targetParts;
+}
+
+/**
+ * 解析允许保留上级目录标记的相对路径。
+ * @param relativePath 相对路径。
+ * @returns 路径片段。
+ */
+function normalizeRelativePartsAllowUp(relativePath: string): string[] {
+  return decodeURIComponent(relativePath)
+    .replaceAll("\\", "/")
+    .split("/")
+    .filter(part => part && part !== ".");
 }

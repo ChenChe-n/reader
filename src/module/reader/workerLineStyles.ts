@@ -13,15 +13,6 @@ export function styleForLine(line: string, mode: LineMode): Record<string, strin
 }
 
 /**
- * 生成长行续行样式。
- * @param baseStyle 原始行样式。
- * @returns 续行样式。
- */
-export function continuationStyle(baseStyle: Record<string, string>): Record<string, string> {
-  return { ...baseStyle, opacity: "0.86" };
-}
-
-/**
  * 解析 JSON 行样式。
  * @param line 原始行文本。
  * @returns 行样式。

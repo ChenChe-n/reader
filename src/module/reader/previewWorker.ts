@@ -65,7 +65,7 @@ function buildPreview(file: File, mode: WorkerRequest["mode"]): WorkerResult {
 function previewForMode(text: string, mode: WorkerRequest["mode"]): Pick<WorkerResult, "preview" | "currentText" | "meta"> {
   if (mode === "markdown") return { preview: markdownPreview(text), currentText: text, meta: "Markdown 解析预览" };
   if (mode === "html") return { preview: { kind: "html", html: text }, currentText: text };
-  return { preview: lineTextPreview(text, mode as LineMode), currentText: "", meta: lineTextMeta(mode) };
+  return { preview: lineTextPreview(text, mode as LineMode), currentText: text, meta: lineTextMeta(mode) };
 }
 
 /**

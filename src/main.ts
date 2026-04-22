@@ -5,6 +5,7 @@ import "./css/layout.css";
 import "./css/sidebar.css";
 import "./css/viewer.css";
 import "./css/content.css";
+import "./css/spreadsheet.css";
 import "./css/markdown.css";
 
 createApp(App).mount("#app");

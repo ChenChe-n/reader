@@ -1,7 +1,7 @@
 <template>
   <div
     ref="viewportRef"
-    class="line-text-viewer line-text-viewer-wrap"
+    class="line-text-viewer line-text-editor line-text-viewer-wrap"
     :class="{ 'line-text-panning': middlePanning }"
     @wheel.prevent="handleWheel"
     @mousedown="startMiddlePan"
@@ -11,11 +11,21 @@
       <div
         v-for="line in visibleLines"
         :key="line.index"
-        :class="['line-text-row', 'line-text-row-wrap', { 'line-text-row-spacer': line.spacer }]"
+        :class="['line-text-row', 'line-text-row-wrap', 'line-text-editor-row', { 'line-text-row-spacer': line.spacer }]"
         :style="{ minHeight: `${rowHeightPx(line.index)}px` }"
       >
         <span class="line-text-number">{{ line.number }}</span>
-        <span class="line-text-data" :style="line.style">{{ line.data || " " }}</span>
+        <textarea
+          v-if="!line.spacer"
+          :ref="el => setAreaRef(line.index, el)"
+          class="line-text-data line-text-editor-input"
+          :style="{ ...line.style, height: `${rowHeightPx(line.index)}px` }"
+          spellcheck="false"
+          :value="line.data"
+          @input="onLineInput(line.index, $event)"
+          @keydown="onLineKeydown(line.index, $event)"
+        ></textarea>
+        <span v-else class="line-text-data line-text-editor-spacer"> </span>
       </div>
     </div>
     <button
@@ -30,39 +40,49 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import type { LineTextDocument } from "../types";
+import type { LineMode } from "./reader/workerLineStyles";
+import { styleForLine } from "./reader/workerLineStyles";
 import { heuristicWrappedHeightPx, wrappedBlockHeightPx } from "./lineText/pretextWrapHeight";
 import { buildPrefixSum, topRowIndexForScroll } from "./lineText/variablePrefixScroll";
 import { useLineTextInput } from "./lineText/useLineTextInput";
 import { LINE_NUMBER_GUTTER_PX } from "./lineText/lineChrome";
 import { toFixed } from "./lineText/useFixedScroller";
 import { useViewportResizeObserver } from "./lineText/useViewportResizeObserver";
+import { logicalLinesToText, textToLogicalLines } from "./lineText/splitJoinLines";
 
 const props = defineProps<{
-  document: LineTextDocument;
+  modelValue: string;
+  lineMode: LineMode;
+}>();
+
+const emit = defineEmits<{
+  "update:modelValue": [value: string];
 }>();
 
 const LINE_H = 22;
 const overscan = 16;
 const lineNumberGutterPx = LINE_NUMBER_GUTTER_PX;
 const lineDataPaddingPx = 24;
+
 const viewportRef = ref<HTMLElement | null>(null);
+const lines = ref<string[]>(textToLogicalLines(props.modelValue));
+const lineHeights = ref<number[]>([]);
+const measurePassGen = ref(0);
+let idleHeightsHandle: number | null = null;
+
 const viewportHeight = ref(0);
 const viewportWidth = ref(0);
 const scrollYFixed = ref(0n);
 const scrollXFixed = ref(0n);
-const lineHeights = ref<number[]>([]);
-const measurePassGen = ref(0);
-let idleHeightsHandle: number | null = null;
 
 const textColumnWidth = computed(() => Math.max(1, viewportWidth.value - lineNumberGutterPx - lineDataPaddingPx));
 
 const visibleRowEst = computed(() => Math.max(Math.ceil(viewportHeight.value / LINE_H), 1));
 const spacerLineCount = computed(() => Math.max(visibleRowEst.value - 1, 1));
-const totalRowCount = computed(() => props.document.lineCount + spacerLineCount.value);
+const totalRowCount = computed(() => lines.value.length + spacerLineCount.value);
 
 const fullRowHeights = computed(() => {
-  const n = props.document.lineCount;
+  const n = lines.value.length;
   const sp = spacerLineCount.value;
   const h = lineHeights.value;
   const rows: number[] = [];
@@ -78,12 +98,10 @@ const totalContentHeight = computed(() => {
 });
 
 const scrollYPx = computed(() => Number(scrollYFixed.value) / 10000);
-
 const maxScrollYFixed = computed(() => toFixed(Math.max(0, totalContentHeight.value - viewportHeight.value)));
 const maxScrollXFixed = computed(() => 0n);
 
 const topIndex = computed(() => topRowIndexForScroll(prefixSum.value, scrollYPx.value, totalRowCount.value));
-
 const startIndex = computed(() => Math.max(topIndex.value - overscan, 0));
 const endIndex = computed(() => Math.min(startIndex.value + visibleRowEst.value + overscan * 2, totalRowCount.value));
 
@@ -103,9 +121,30 @@ const verticalThumb = computed(() =>
   )
 );
 
+const areaRefs = new Map<number, HTMLTextAreaElement>();
+function setAreaRef(index: number, el: unknown): void {
+  if (el instanceof HTMLTextAreaElement) areaRefs.set(index, el);
+  else areaRefs.delete(index);
+}
+
 const visibleLines = computed(() => {
   const rows: Array<{ index: number; number: string; data: string; style: Record<string, string>; spacer: boolean }> = [];
-  for (let index = startIndex.value; index < endIndex.value; index += 1) rows.push(rowForIndex(index));
+  for (let index = startIndex.value; index < endIndex.value; index += 1) {
+    if (index >= lines.value.length + spacerLineCount.value) {
+      rows.push({ index, number: "", data: "", style: {}, spacer: true });
+    } else if (index >= lines.value.length) {
+      rows.push({ index, number: "", data: "", style: {}, spacer: true });
+    } else {
+      const data = lines.value[index];
+      rows.push({
+        index,
+        number: String(index + 1),
+        data,
+        style: styleForLine(data, props.lineMode),
+        spacer: false
+      });
+    }
+  }
   return rows;
 });
 
@@ -118,17 +157,6 @@ function buildThumb(track: number, ratio: number, scroll: bigint, maxScroll: big
   const range = Math.max(track - 4 - size, 0);
   const offset = maxScroll ? Number((scroll * BigInt(Math.round(range * 10000))) / maxScroll) / 10000 : 0;
   return { width: size, height: size, left: offset + 2, top: offset + 2 };
-}
-
-function rowForIndex(index: number): { index: number; number: string; data: string; style: Record<string, string>; spacer: boolean } {
-  if (index >= props.document.lineCount + spacerLineCount.value) {
-    return { index, number: "", data: "", style: {}, spacer: true };
-  }
-  if (index >= props.document.lineCount) {
-    return { index, number: "", data: "", style: {}, spacer: true };
-  }
-  const line = props.document.lines[String(index)] || { data: "", style: {} };
-  return { index, number: String(index + 1), data: line.data, style: line.style, spacer: false };
 }
 
 function clampScroll(): void {
@@ -152,25 +180,30 @@ function cancelIdleHeights(): void {
   idleHeightsHandle = null;
 }
 
-function schedulePreciseHeights(doc: LineTextDocument, gen: number): void {
+function heightForLineText(text: string): number {
+  return wrappedBlockHeightPx(text, styleForLine(text, props.lineMode), textColumnWidth.value, LINE_H);
+}
+
+function schedulePreciseHeights(gen: number): void {
   cancelIdleHeights();
   const wrapW = textColumnWidth.value;
-  const arr = lineHeights.value.length === doc.lineCount ? lineHeights.value.slice() : new Array(doc.lineCount);
+  const n = lines.value.length;
+  const arr = lineHeights.value.length === n ? lineHeights.value.slice() : new Array(n);
   let i = 0;
   const step: IdleRequestCallback = deadline => {
     if (measurePassGen.value !== gen) return;
     const BATCH = 256;
     let batch = 0;
-    while (i < doc.lineCount && batch < BATCH) {
-      const line = doc.lines[String(i)] || { data: "", style: {} };
-      arr[i] = wrappedBlockHeightPx(line.data, line.style, wrapW, LINE_H);
+    while (i < n && batch < BATCH) {
+      const t = lines.value[i] ?? "";
+      arr[i] = wrappedBlockHeightPx(t, styleForLine(t, props.lineMode), wrapW, LINE_H);
       i += 1;
       batch += 1;
-      if (deadline.timeRemaining() < 2 && i < doc.lineCount && batch >= 64) break;
+      if (deadline.timeRemaining() < 2 && i < n && batch >= 64) break;
     }
     lineHeights.value = arr;
     clampScroll();
-    if (i >= doc.lineCount) {
+    if (i >= n) {
       idleHeightsHandle = null;
       return;
     }
@@ -179,30 +212,32 @@ function schedulePreciseHeights(doc: LineTextDocument, gen: number): void {
   idleHeightsHandle = requestIdleCallback(step, { timeout: 120 });
 }
 
-function bootstrapHeights(doc: LineTextDocument): void {
+function bootstrapHeights(): void {
   measurePassGen.value += 1;
   const gen = measurePassGen.value;
   cancelIdleHeights();
   const wrapW = textColumnWidth.value;
-  const arr = new Array(doc.lineCount);
-  for (let i = 0; i < doc.lineCount; i += 1) {
-    const line = doc.lines[String(i)] || { data: "", style: {} };
-    arr[i] = heuristicWrappedHeightPx(line.data.length, wrapW, LINE_H);
+  const n = lines.value.length;
+  const arr = new Array(n);
+  for (let i = 0; i < n; i += 1) {
+    const t = lines.value[i] ?? "";
+    arr[i] = heuristicWrappedHeightPx(t.length, wrapW, LINE_H);
   }
   lineHeights.value = arr;
   clampScroll();
-  schedulePreciseHeights(doc, gen);
+  schedulePreciseHeights(gen);
 }
 
-function restartForDocument(): void {
-  bootstrapHeights(props.document);
-}
-
-function updateViewport(): void {
-  if (!viewportRef.value) return;
-  viewportHeight.value = viewportRef.value.clientHeight;
-  viewportWidth.value = viewportRef.value.clientWidth;
+function patchLineHeight(index: number): void {
+  const t = lines.value[index] ?? "";
+  const h = lineHeights.value.slice();
+  h[index] = heightForLineText(t);
+  lineHeights.value = h;
   clampScroll();
+}
+
+function emitDocument(): void {
+  emit("update:modelValue", logicalLinesToText(lines.value));
 }
 
 const { middlePanning, handleWheel, startMiddlePan, startThumbDrag, cleanupInput } = useLineTextInput({
@@ -217,18 +252,82 @@ const { middlePanning, handleWheel, startMiddlePan, startThumbDrag, cleanupInput
   horizontalThumbSize: () => 28
 });
 
+function onLineInput(index: number, event: Event): void {
+  const el = event.target as HTMLTextAreaElement;
+  lines.value[index] = el.value;
+  patchLineHeight(index);
+  emitDocument();
+}
+
+function onLineKeydown(index: number, event: KeyboardEvent): void {
+  const el = event.target as HTMLTextAreaElement;
+  if (event.key === "Enter") {
+    event.preventDefault();
+    const c = el.selectionStart ?? el.value.length;
+    const left = el.value.slice(0, c);
+    const right = el.value.slice(c);
+    lines.value[index] = left;
+    lines.value.splice(index + 1, 0, right);
+    const h = lineHeights.value.slice();
+    h[index] = heightForLineText(left);
+    h.splice(index + 1, 0, heightForLineText(right));
+    lineHeights.value = h;
+    emitDocument();
+    nextTick(() => {
+      const next = areaRefs.get(index + 1);
+      next?.focus();
+      next?.setSelectionRange(0, 0);
+    });
+    return;
+  }
+  if (event.key === "Backspace" && (el.selectionStart ?? 0) === 0 && (el.selectionEnd ?? 0) === 0 && index > 0) {
+    event.preventDefault();
+    const merged = lines.value[index - 1] + lines.value[index];
+    const prevLen = lines.value[index - 1].length;
+    lines.value[index - 1] = merged;
+    lines.value.splice(index, 1);
+    const h = lineHeights.value.slice();
+    h[index - 1] = heightForLineText(merged);
+    h.splice(index, 1);
+    lineHeights.value = h;
+    emitDocument();
+    nextTick(() => {
+      const prev = areaRefs.get(index - 1);
+      prev?.focus();
+      prev?.setSelectionRange(prevLen, prevLen);
+    });
+  }
+}
+
+function updateViewport(): void {
+  if (!viewportRef.value) return;
+  viewportHeight.value = viewportRef.value.clientHeight;
+  viewportWidth.value = viewportRef.value.clientWidth;
+  clampScroll();
+}
+
 watch(
-  () => props.document,
-  async () => {
-    await nextTick();
+  () => props.modelValue,
+  v => {
+    if (v === logicalLinesToText(lines.value)) return;
+    lines.value = textToLogicalLines(v);
     resetScroll();
-    updateViewport();
-    restartForDocument();
+    nextTick(() => {
+      updateViewport();
+      bootstrapHeights();
+    });
+  }
+);
+
+watch(
+  () => props.lineMode,
+  () => {
+    bootstrapHeights();
   }
 );
 
 watch(textColumnWidth, () => {
-  restartForDocument();
+  bootstrapHeights();
 });
 
 watch(totalContentHeight, () => {
@@ -241,7 +340,7 @@ useViewportResizeObserver(viewportRef, () => {
 
 onMounted(() => {
   updateViewport();
-  restartForDocument();
+  bootstrapHeights();
 });
 
 onUnmounted(() => {
