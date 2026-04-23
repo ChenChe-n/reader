@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>HTML Sample with Advanced Features</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      .multiline-content {
+        white-space: pre-line;
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>HTML 示例 - 展示多种特性</h1>
+      
+      <!-- 
+        这是 HTML 的多行注释
+        可以跨越多行
+        不会在浏览器中显示
+        通常用于详细说明页面结构
+      -->
+      
+      <p>这个页面展示了 HTML 的各种特性:</p>
+      
+      <!-- 多行内容示例 -->
+      <div class="multiline-content">
+        这是一个多行文本示例
+        可以包含换行
+        
+            保持缩进
+        结束行
+      </div>
+      
+      <!-- 嵌入脚本示例 -->
+      <script>
+        /*
+         * 这是在 HTML 中嵌入的 JavaScript 多行注释
+         * 展示了模板字符串和其他特性
+         */
+        
+        // 多行字符串（模板字符串）示例
+        const multilineString = `
+这是 JavaScript 中的多行字符串
+可以包含特殊字符 "引号" 和 '单引号'
+    保持缩进
+支持 ${"插值"} 功能
+        `;
+        
+        // 原始字符串概念的模拟（通过模板字符串实现）
+        const rawLikeString = `
+C:\\Users\\HTML\\Documents
+不需要转义反斜杠
+路径很清晰
+        `;
+        
+        // HTML 注入多行内容
+        document.write("<h2>JavaScript 生成的内容:</h2>");
+        document.write('<pre class="multiline-content">' + multilineString + '</pre>');
+        document.write('<pre class="multiline-content">' + rawLikeString + '</pre>');
+        
+        // 函数定义
+        function greet(name) {
+          return `Hello, ${name}!`;
+        }
+        
+        // 对象和方法
+        const user = {
+          name: "HTML User",
+          id: 123,
+          getInfo: function() {
+            return `User: ${this.name}, ID: ${this.id}`;
+          }
+        };
+        
+        // 数组和方法链
+        const items = ["apple", "banana", "cherry"];
+        const formattedItems = items
+          .map((item, index) => `${index + 1}. ${item}`)
+          .join('\n');
+          
+        document.write(`<h3>列表示例:</h3><pre class="multiline-content">${formattedItems}</pre>`);
+        document.write(`<p>${user.getInfo()}</p>`);
+      </script>
+      
+      <!-- 嵌入更多脚本 -->
+      <script>
+        // 按钮事件处理
+        document.getElementById("btn")?.addEventListener("click", function () {
+          alert(greet("HTML with advanced features"));
+        });
+        
+        // 使用模板字符串构建复杂 HTML
+        const cardTemplate = `
+<div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 4px;">
+  <h3>卡片标题</h3>
+  <p>这是一个使用模板字符串构建的 HTML 片段</p>
+  <ul>
+    <li>支持多行</li>
+    <li>支持 "引号" 和 '单引号'</li>
+    <li>支持 ${"插值"}</li>
+  </ul>
+</div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', cardTemplate);
+      </script>
+      
+      <button id="btn">Click Me</button>
+    </div>
+  </body>
+</html>

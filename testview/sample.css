@@ -1,0 +1,13 @@
+/* CSS block comment */
+:root {
+  --main-color: #3366ff;
+}
+
+.card::before {
+  content: "css string value";
+  color: var(--main-color);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}

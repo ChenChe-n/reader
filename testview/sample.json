@@ -1,0 +1,9 @@
+{
+  "title": "JSON sample",
+  "description": "Strings, arrays, nested objects",
+  "features": ["function-call-like-name()", "string-method-like-tag", "escape-quote: \"ok\""],
+  "nested": {
+    "enabled": true,
+    "count": 3
+  }
+}

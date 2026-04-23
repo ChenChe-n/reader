@@ -1,5 +1,5 @@
 import type { LineTextSpan } from "../../../../types";
-import { scriptLineResult, scriptLineSpans, type ScriptLineResult, type ScriptSyntaxState } from "../typescript/main";
+import { scriptLineResult, scriptLineSpans, type ScriptLineResult, type ScriptSyntaxState } from "../utils/script";
 
 export const JAVASCRIPT_KEYWORDS = new Set([
   "async",

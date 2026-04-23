@@ -1,7 +1,7 @@
 import type { LineTextSpan } from "../../../../types";
 import { cssLineResult } from "../css/main";
 import { JAVASCRIPT_KEYWORDS } from "../javascript/main";
-import { scriptLineResult } from "../typescript/main";
+import { scriptLineResult } from "./script";
 import type { SlashBlockState } from "./slashBlock";
 import { tokensToSpans, type SyntaxToken } from "./tokens";
 
