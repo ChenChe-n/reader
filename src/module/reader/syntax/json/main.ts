@@ -1,5 +1,5 @@
 import type { LineTextSpan } from "../../../../types";
-import { readQuotedString } from "../utils/scan";
+import { readKeywordTokenEnd, readQuotedString } from "../utils/scan";
 import { tokensToSpans, type SyntaxToken } from "../utils/tokens";
 
 const JSON_KEYWORDS = new Set(["true", "false", "null"]);
@@ -15,14 +15,17 @@ export function jsonLineSpans(line: string): LineTextSpan[] {
       index = end;
       continue;
     }
+    const keywordEnd = readKeywordTokenEnd(line, index, JSON_KEYWORDS);
+    if (keywordEnd !== null) {
+      tokens.push({ start: index, end: keywordEnd, kind: "keyword" });
+      index = keywordEnd;
+      continue;
+    }
     if (/[A-Za-z]/.test(char)) {
-      const start = index;
       while (index < line.length && /[A-Za-z]/.test(line[index])) index += 1;
-      if (JSON_KEYWORDS.has(line.slice(start, index))) tokens.push({ start, end: index, kind: "keyword" });
       continue;
     }
     index += 1;
   }
   return tokensToSpans(tokens, line.length);
 }
-

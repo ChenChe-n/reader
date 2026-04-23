@@ -1,5 +1,5 @@
 import type { LineTextSpan } from "../../../../types";
-import { isIdentifierPart, isIdentifierStart, nextNonSpace, readQuotedString, readTemplateString } from "./scan";
+import { isIdentifierPart, isIdentifierStart, nextNonSpace, readKeywordTokenEnd, readQuotedString, readTemplateString } from "./scan";
 import { tokensToSpans, type SyntaxToken } from "./tokens";
 
 export interface SlashBlockState {
@@ -67,12 +67,18 @@ export function slashBlockLineResult(line: string, state: SlashBlockState, optio
       index = end;
       continue;
     }
+    const keywordEnd = readKeywordTokenEnd(line, index, options.keywords);
+    if (keywordEnd !== null) {
+      tokens.push({ start: index, end: keywordEnd, kind: "keyword" });
+      index = keywordEnd;
+      continue;
+    }
     if (isIdentifierStart(char)) {
       const start = index;
       index += 1;
       while (index < line.length && isIdentifierPart(line[index])) index += 1;
       const word = line.slice(start, index);
-      if (options.keywords.has(word)) tokens.push({ start, end: index, kind: "keyword" });
+      if (options.keywords.has(word)) continue;
       else if (isFunctionToken(line, index, options.functionPattern ?? "call")) tokens.push({ start, end: index, kind: "function" });
       continue;
     }
@@ -87,4 +93,3 @@ function isFunctionToken(line: string, index: number, pattern: "call" | "declara
   if (pattern === "call") return true;
   return /\b[A-Za-z_][A-Za-z0-9_<>,\s:*&]*\s+$/.test(line.slice(0, index));
 }
-

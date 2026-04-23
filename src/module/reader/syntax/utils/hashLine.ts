@@ -1,5 +1,5 @@
 import type { LineTextSpan } from "../../../../types";
-import { isIdentifierPart, isIdentifierStart, nextNonSpace, readQuotedString } from "./scan";
+import { isIdentifierPart, isIdentifierStart, nextNonSpace, readKeywordTokenEnd, readQuotedString } from "./scan";
 import { tokensToSpans, type SyntaxToken } from "./tokens";
 
 export function hashLineSpans(line: string, keywords: ReadonlySet<string>): LineTextSpan[] {
@@ -19,12 +19,18 @@ export function hashLineSpans(line: string, keywords: ReadonlySet<string>): Line
       index = end;
       continue;
     }
+    const keywordEnd = readKeywordTokenEnd(line, index, keywords);
+    if (keywordEnd !== null) {
+      tokens.push({ start: index, end: keywordEnd, kind: "keyword" });
+      index = keywordEnd;
+      continue;
+    }
     if (isIdentifierStart(char)) {
       const start = index;
       index += 1;
       while (index < line.length && isIdentifierPart(line[index])) index += 1;
       const word = line.slice(start, index);
-      if (keywords.has(word)) tokens.push({ start, end: index, kind: "keyword" });
+      if (keywords.has(word)) continue;
       else if (nextNonSpace(line, index) === "(") tokens.push({ start, end: index, kind: "function" });
       continue;
     }
@@ -37,4 +43,3 @@ function readTripleQuotedString(line: string, start: number, quote: string): num
   const close = line.indexOf(quote.repeat(3), start + 3);
   return close >= 0 ? close + 3 : line.length;
 }
-
