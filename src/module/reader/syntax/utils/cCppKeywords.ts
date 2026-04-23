@@ -1,6 +1,6 @@
 /**
  * Shared C / C++ keyword sets for line-level syntax highlighting.
- * Preprocessor entries are matched as a single whitespace-delimited token (see readKeywordTokenEnd).
+ * Preprocessor entries are matched as a single program token (see readKeywordTokenEnd).
  */
 
 const CCPP_PREPROCESSOR_KEYWORDS = [

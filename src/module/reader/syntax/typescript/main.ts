@@ -1,5 +1,5 @@
 import type { LineTextSpan } from "../../../../types";
-import { nextNonSpace, readIdentifierEnd, readKeywordTokenEnd, readQuotedString, readTemplateString } from "../utils/scan";
+import { nextNonSpace, readKeywordTokenEnd, readProgramTokenEnd, readQuotedString, readTemplateString } from "../utils/scan";
 import { tokensToSpans, type SyntaxToken } from "../utils/tokens";
 
 export interface ScriptSyntaxState {
@@ -10,6 +10,8 @@ export interface ScriptLineResult {
   spans: LineTextSpan[];
   state: ScriptSyntaxState;
 }
+
+type TokenScanState = "normal" | "comment" | "function" | "string";
 
 const TYPESCRIPT_KEYWORDS = new Set([
   "abstract",
@@ -83,59 +85,68 @@ export function scriptLineResult(line: string, keywords: ReadonlySet<string>, st
   const nextState = { ...state };
   let index = 0;
   while (index < line.length) {
-    if (nextState.inBlockComment) {
+    const scanState = scriptTokenState(line, index, keywords, nextState);
+
+    if (scanState === "comment") {
       const close = line.indexOf("*/", index);
-      if (close < 0) {
-        tokens.push({ start: index, end: line.length, kind: "comment" });
-        return { spans: tokensToSpans(tokens, line.length), state: nextState };
+      if (nextState.inBlockComment) {
+        if (close < 0) {
+          tokens.push({ start: index, end: line.length, kind: "comment" });
+          return { spans: tokensToSpans(tokens, line.length), state: nextState };
+        }
+        tokens.push({ start: index, end: close + 2, kind: "comment" });
+        nextState.inBlockComment = false;
+        index = close + 2;
+        continue;
       }
-      tokens.push({ start: index, end: close + 2, kind: "comment" });
-      nextState.inBlockComment = false;
-      index = close + 2;
-      continue;
-    }
-    const char = line[index];
-    const next = line[index + 1];
-    if (char === "/" && next === "/") {
-      tokens.push({ start: index, end: line.length, kind: "comment" });
-      break;
-    }
-    if (char === "/" && next === "*") {
-      const close = line.indexOf("*/", index + 2);
-      const end = close >= 0 ? close + 2 : line.length;
+      if (line[index + 1] === "/") {
+        tokens.push({ start: index, end: line.length, kind: "comment" });
+        break;
+      }
+      const blockClose = line.indexOf("*/", index + 2);
+      const end = blockClose >= 0 ? blockClose + 2 : line.length;
       tokens.push({ start: index, end, kind: "comment" });
-      nextState.inBlockComment = close < 0;
+      nextState.inBlockComment = blockClose < 0;
       index = end;
       continue;
     }
-    if (char === '"' || char === "'") {
-      const end = readQuotedString(line, index);
+
+    if (scanState === "string") {
+      const end = line[index] === "`" ? readTemplateString(line, index) : readQuotedString(line, index);
       tokens.push({ start: index, end, kind: "string" });
       index = end;
       continue;
     }
-    if (char === "`") {
-      const end = readTemplateString(line, index);
-      tokens.push({ start: index, end, kind: "string" });
-      index = end;
+
+    const tokenEnd = readProgramTokenEnd(line, index);
+    if (tokenEnd !== null) {
+      if (scanState === "function") tokens.push({ start: index, end: tokenEnd, kind: "function" });
+      else {
+        const keywordEnd = readKeywordTokenEnd(line, index, keywords);
+        if (keywordEnd !== null) tokens.push({ start: index, end: keywordEnd, kind: "keyword" });
+      }
+      index = tokenEnd;
       continue;
     }
-    const keywordEnd = readKeywordTokenEnd(line, index, keywords);
-    if (keywordEnd !== null) {
-      tokens.push({ start: index, end: keywordEnd, kind: "keyword" });
-      index = keywordEnd;
-      continue;
-    }
-    const identifierEnd = readIdentifierEnd(line, index);
-    if (identifierEnd !== null) {
-      const start = index;
-      index = identifierEnd;
-      const word = line.slice(start, index);
-      if (keywords.has(word)) continue;
-      else if (nextNonSpace(line, index) === "(") tokens.push({ start, end: index, kind: "function" });
-      continue;
-    }
+
     index += 1;
   }
   return { spans: tokensToSpans(tokens, line.length), state: nextState };
+}
+
+/**
+ * 根据当前位置内容判断脚本扫描器的 token 状态。
+ *
+ * @param line 当前行文本。
+ * @param index 当前扫描位置。
+ * @param keywords 可匹配的关键字集合。
+ * @param state 当前跨行扫描状态。
+ * @returns 当前位置对应的 token 状态。
+ */
+function scriptTokenState(line: string, index: number, keywords: ReadonlySet<string>, state: ScriptSyntaxState): TokenScanState {
+  if (state.inBlockComment || (line[index] === "/" && (line[index + 1] === "/" || line[index + 1] === "*"))) return "comment";
+  if (line[index] === '"' || line[index] === "'" || line[index] === "`") return "string";
+  const tokenEnd = readProgramTokenEnd(line, index);
+  if (tokenEnd !== null && !keywords.has(line.slice(index, tokenEnd)) && nextNonSpace(line, tokenEnd) === "(") return "function";
+  return "normal";
 }
