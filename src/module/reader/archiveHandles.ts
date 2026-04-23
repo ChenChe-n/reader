@@ -23,6 +23,30 @@ interface ArchiveTreeNode {
 }
 
 let archiveInitialized = false;
+const ARCHIVE_SUFFIXES = [
+  ".zip",
+  ".rar",
+  ".7z",
+  ".tar",
+  ".tgz",
+  ".gz",
+  ".tar.gz",
+  ".cbz",
+  ".cbr",
+  ".cb7",
+  ".cbt",
+  ".xz",
+  ".txz",
+  ".tar.xz",
+  ".bz2",
+  ".tbz2",
+  ".tar.bz2",
+  ".zst",
+  ".tzst",
+  ".tar.zst",
+  ".cab",
+  ".iso"
+];
 
 /**
  * 判断文件名是否是支持进入浏览的压缩包。
@@ -31,10 +55,7 @@ let archiveInitialized = false;
  */
 export function isArchiveFileName(name: string): boolean {
   const lower = name.toLowerCase();
-  return (
-    [".zip", ".rar", ".7z", ".tar", ".tgz", ".gz"].some(suffix => lower.endsWith(suffix)) ||
-    lower.endsWith(".tar.gz")
-  );
+  return ARCHIVE_SUFFIXES.some(suffix => lower.endsWith(suffix));
 }
 
 /**

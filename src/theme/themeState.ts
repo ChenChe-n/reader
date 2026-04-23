@@ -1,4 +1,5 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { readConfigValue, writeConfigValue } from "../api/readerConfig";
 
 export type ThemeMode = "system" | "light" | "dark" | "custom";
 
@@ -18,7 +19,7 @@ export interface ThemeSettings {
   custom: ThemePalette;
 }
 
-const STORAGE_KEY = "reader.theme";
+const THEME_SETTINGS_KEY = "reader.theme";
 
 const LIGHT: ThemePalette = {
   background: "#ffffff",
@@ -53,9 +54,10 @@ const DEFAULT_CUSTOM: ThemePalette = {
   string: "#ce9178"
 };
 
-const settings = reactive<ThemeSettings>(readThemeSettings());
+const settings = reactive<ThemeSettings>(defaultThemeSettings());
 const mediaQuery = ref<MediaQueryList | null>(null);
 const prefersDark = ref(false);
+const settingsReady = ref(false);
 const effectiveMode = computed<"light" | "dark" | "custom">(() => {
   if (settings.mode === "system") return prefersDark.value ? "dark" : "light";
   return settings.mode;
@@ -72,10 +74,7 @@ const activePalette = computed(() => {
  */
 export function useThemeState() {
   onMounted(() => {
-    mediaQuery.value = window.matchMedia("(prefers-color-scheme: dark)");
-    prefersDark.value = mediaQuery.value.matches;
-    mediaQuery.value.addEventListener("change", syncSystemTheme);
-    applyTheme(activePalette.value, effectiveMode.value);
+    void restoreThemeSettings();
   });
 
   onUnmounted(() => {
@@ -95,7 +94,8 @@ export function useThemeState() {
       settings.custom.string
     ],
     () => {
-      writeThemeSettings(settings);
+      if (!settingsReady.value) return;
+      void writeThemeSettings(settings);
       applyTheme(activePalette.value, effectiveMode.value);
     },
     { immediate: true }
@@ -143,6 +143,20 @@ export function useThemeState() {
   };
 }
 
+/**
+ * 恢复并应用保存的主题配置。
+ * @returns 异步完成信号。
+ */
+async function restoreThemeSettings(): Promise<void> {
+  mediaQuery.value = window.matchMedia("(prefers-color-scheme: dark)");
+  prefersDark.value = mediaQuery.value.matches;
+  mediaQuery.value.addEventListener("change", syncSystemTheme);
+  const persisted = await readThemeSettings();
+  Object.assign(settings, persisted);
+  settingsReady.value = true;
+  applyTheme(activePalette.value, effectiveMode.value);
+}
+
 function syncSystemTheme(event: MediaQueryListEvent): void {
   prefersDark.value = event.matches;
   if (settings.mode === "system") applyTheme(activePalette.value, effectiveMode.value);
@@ -162,11 +176,10 @@ function applyTheme(palette: ThemePalette, mode: "light" | "dark" | "custom"): v
   root.style.setProperty("--syntax-string", palette.string);
 }
 
-function readThemeSettings(): ThemeSettings {
+async function readThemeSettings(): Promise<ThemeSettings> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultThemeSettings();
-    const value = JSON.parse(raw) as Partial<ThemeSettings>;
+    const value = await readConfigValue<Partial<ThemeSettings>>(THEME_SETTINGS_KEY);
+    if (!value) return defaultThemeSettings();
     return {
       mode: isThemeMode(value.mode) ? value.mode : "system",
       custom: normalizePalette(value.custom)
@@ -176,8 +189,11 @@ function readThemeSettings(): ThemeSettings {
   }
 }
 
-function writeThemeSettings(value: ThemeSettings): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+async function writeThemeSettings(value: ThemeSettings): Promise<void> {
+  await writeConfigValue<ThemeSettings>(THEME_SETTINGS_KEY, {
+    mode: value.mode,
+    custom: { ...value.custom }
+  });
 }
 
 function defaultThemeSettings(): ThemeSettings {

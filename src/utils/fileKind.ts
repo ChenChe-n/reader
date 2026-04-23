@@ -3,6 +3,26 @@ import type { LocalEntry, ReaderIconName } from "../types";
 const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif", "apng"];
 const VIDEO_EXTENSIONS = ["mp4", "webm", "ogg", "ogv", "mov", "m4v"];
 const AUDIO_EXTENSIONS = ["mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus", "webm"];
+const ARCHIVE_EXTENSIONS = [
+  "zip",
+  "rar",
+  "7z",
+  "tar",
+  "tgz",
+  "gz",
+  "cbz",
+  "cbr",
+  "cb7",
+  "cbt",
+  "xz",
+  "txz",
+  "bz2",
+  "tbz2",
+  "zst",
+  "tzst",
+  "cab",
+  "iso"
+];
 
 /**
  * 获取文件名后缀的小写形式。
@@ -37,7 +57,7 @@ export function iconForExtension(ext: string): ReaderIconName {
   if (IMAGE_EXTENSIONS.includes(ext)) return "file-image";
   if (VIDEO_EXTENSIONS.includes(ext)) return "file-video";
   if (AUDIO_EXTENSIONS.includes(ext)) return "file-audio";
-  if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) return "file-archive";
+  if (ARCHIVE_EXTENSIONS.includes(ext)) return "file-archive";
   return "file-default";
 }
 

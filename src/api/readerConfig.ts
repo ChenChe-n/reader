@@ -73,6 +73,35 @@ export async function ensureReadPermission(handle: FileSystemDirectoryHandleLike
   return (await handle.requestPermission?.(descriptor)) === "granted";
 }
 
+/**
+ * 读取通用配置项。
+ * @param key 配置键。
+ * @returns 配置值，不存在时返回 null。
+ */
+export async function readConfigValue<T>(key: string): Promise<T | null> {
+  const db = await openConfigDb();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).get(key);
+    request.onsuccess = () => resolve((request.result as T | undefined) ?? null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+/**
+ * 写入通用配置项。
+ * @param key 配置键。
+ * @param value 配置值。
+ * @returns 异步完成信号。
+ */
+export async function writeConfigValue<T>(key: string, value: T): Promise<void> {
+  const db = await openConfigDb();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(STORE_NAME, "readwrite").objectStore(STORE_NAME).put(value, key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
 async function writeSessionToIndexedDb(config: ReaderSessionConfig): Promise<void> {
   const db = await openConfigDb();
   return new Promise((resolve, reject) => {

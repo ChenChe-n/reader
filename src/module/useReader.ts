@@ -1,5 +1,6 @@
-import { computed, markRaw, reactive, ref, watch } from "vue";
+import { computed, markRaw, onMounted, reactive, ref, watch } from "vue";
 import { pickDirectory, readDirectory } from "../api/localFiles";
+import { readConfigValue, writeConfigValue } from "../api/readerConfig";
 import type {
   FileSystemDirectoryHandleLike,
   FileSystemFileHandleLike,
@@ -40,7 +41,7 @@ export function useReader() {
   const currentFileHandle = ref<FileSystemFileHandleLike | null>(null);
   const lastWorkerMode = ref<TextPreviewWorkerMode | null>(null);
   const previewEditing = ref(false);
-  const htmlPreviewMode = ref<HtmlPreviewMode>(readHtmlPreviewMode());
+  const htmlPreviewMode = ref<HtmlPreviewMode>("web");
   const draftText = ref("");
   const currentFileDirectoryPath = ref<string[]>([]);
   const searchKeyword = ref("");
@@ -128,6 +129,10 @@ export function useReader() {
   if (!window.showDirectoryPicker) {
     Object.assign(preview, noticePreview("当前浏览器不支持本地目录选择。请使用新版 Chrome、Edge 或其他支持 File System Access API 的浏览器打开此页面。"));
   }
+
+  onMounted(() => {
+    void restoreHtmlPreviewMode();
+  });
 
   /**
    * 打开本地目录并加载根目录内容。
@@ -272,7 +277,7 @@ export function useReader() {
 
   function toggleHtmlPreviewMode(): void {
     htmlPreviewMode.value = htmlPreviewMode.value === "web" ? "code" : "web";
-    writeHtmlPreviewMode(htmlPreviewMode.value);
+    void writeHtmlPreviewMode(htmlPreviewMode.value);
     if (!currentFile.value || !canToggleHtmlPreview.value) return;
     if (htmlPreviewMode.value === "web") {
       lastWorkerMode.value = "html";
@@ -283,6 +288,14 @@ export function useReader() {
     if (next.kind === "lineText") next.lineText = markRaw(next.lineText);
     lastWorkerMode.value = "html-code";
     setPreview(next);
+  }
+
+  /**
+   * 恢复 HTML 预览模式配置。
+   * @returns 异步完成信号。
+   */
+  async function restoreHtmlPreviewMode(): Promise<void> {
+    htmlPreviewMode.value = await readHtmlPreviewMode();
   }
 
   return {
@@ -325,17 +338,17 @@ export function useReader() {
   };
 }
 
-function readHtmlPreviewMode(): HtmlPreviewMode {
+async function readHtmlPreviewMode(): Promise<HtmlPreviewMode> {
   try {
-    return localStorage.getItem(HTML_PREVIEW_MODE_KEY) === "code" ? "code" : "web";
+    return (await readConfigValue<HtmlPreviewMode>(HTML_PREVIEW_MODE_KEY)) === "code" ? "code" : "web";
   } catch {
     return "web";
   }
 }
 
-function writeHtmlPreviewMode(mode: HtmlPreviewMode): void {
+async function writeHtmlPreviewMode(mode: HtmlPreviewMode): Promise<void> {
   try {
-    localStorage.setItem(HTML_PREVIEW_MODE_KEY, mode);
+    await writeConfigValue<HtmlPreviewMode>(HTML_PREVIEW_MODE_KEY, mode);
   } catch {
     // Ignore storage failures; the current session still switches correctly.
   }

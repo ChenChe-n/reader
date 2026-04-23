@@ -1,4 +1,9 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import { readConfigValue, writeConfigValue } from "../api/readerConfig";
+
+const LAYOUT_RATIO_KEY = "reader.layout.sidebarRatio";
+const MIN_SIDEBAR_RATIO = 0.2;
+const MAX_SIDEBAR_RATIO = 0.7;
 
 /**
  * 管理阅读器主布局的侧栏拖拽、折叠、最大化和窄屏状态。
@@ -41,8 +46,9 @@ export function useResponsiveLayout() {
   function resizePanels(event: PointerEvent): void {
     if (!resizing.value || !layoutRef.value) return;
     const rect = layoutRef.value.getBoundingClientRect();
-    const width = Math.min(Math.max(event.clientX - rect.left, rect.width * 0.2), rect.width * 0.7);
-    document.documentElement.style.setProperty("--sidebar-width", `${width}px`);
+    const ratio = clampSidebarRatio((event.clientX - rect.left) / rect.width);
+    applySidebarRatio(ratio);
+    void writeSidebarRatio(ratio);
   }
 
   /**
@@ -69,6 +75,7 @@ export function useResponsiveLayout() {
   }
 
   onMounted(() => {
+    void restoreSidebarRatio();
     cleanupNarrowLayout = watchNarrowLayout();
     window.addEventListener("pointermove", resizePanels);
     window.addEventListener("pointerup", stopResize);
@@ -82,6 +89,14 @@ export function useResponsiveLayout() {
     window.removeEventListener("pointercancel", stopResize);
   });
 
+  /**
+   * 恢复侧栏比例配置。
+   * @returns 异步完成信号。
+   */
+  async function restoreSidebarRatio(): Promise<void> {
+    applySidebarRatio(await readSidebarRatio());
+  }
+
   return {
     layoutRef,
     resizerRef,
@@ -93,4 +108,50 @@ export function useResponsiveLayout() {
     layoutClass,
     startResize
   };
+}
+
+/**
+ * 约束侧栏比例范围。
+ * @param value 原始比例值。
+ * @returns 合法比例值。
+ */
+function clampSidebarRatio(value: number): number {
+  return Math.min(Math.max(value, MIN_SIDEBAR_RATIO), MAX_SIDEBAR_RATIO);
+}
+
+/**
+ * 应用侧栏比例到根样式变量。
+ * @param ratio 侧栏比例。
+ * @returns 无返回值。
+ */
+function applySidebarRatio(ratio: number): void {
+  document.documentElement.style.setProperty("--sidebar-width", `${Math.round(ratio * 1000) / 10}%`);
+}
+
+/**
+ * 读取本地保存的侧栏比例。
+ * @returns 侧栏比例。
+ */
+async function readSidebarRatio(): Promise<number> {
+  try {
+    const raw = await readConfigValue<number>(LAYOUT_RATIO_KEY);
+    if (!raw) return 0.3;
+    if (!Number.isFinite(raw)) return 0.3;
+    return clampSidebarRatio(raw);
+  } catch {
+    return 0.3;
+  }
+}
+
+/**
+ * 保存侧栏比例到本地。
+ * @param ratio 侧栏比例。
+ * @returns 无返回值。
+ */
+async function writeSidebarRatio(ratio: number): Promise<void> {
+  try {
+    await writeConfigValue<number>(LAYOUT_RATIO_KEY, ratio);
+  } catch {
+    // 忽略本地存储不可用，当前会话布局仍可正常使用。
+  }
 }
