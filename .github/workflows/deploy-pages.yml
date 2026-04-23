@@ -1,5 +1,4 @@
 # 构建产物推送到 gitpage 分支；Pages 设置：来源 = 分支 gitpage + /(root)
-# 参考 https://github.com/SubFoundry/SubForge/tree/gitpage
 
 name: Deploy GitHub Pages
 
