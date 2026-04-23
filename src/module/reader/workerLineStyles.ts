@@ -6,7 +6,7 @@ import { htmlLineResult, htmlLineSpans } from "./syntax/html/main";
 import { javaLineResult, javaLineSpans } from "./syntax/java/main";
 import { javascriptLineResult, javascriptLineSpans } from "./syntax/javascript/main";
 import { jsonLineSpans } from "./syntax/json/main";
-import { pythonLineSpans } from "./syntax/python/main";
+import { pythonLineResult, pythonLineSpans, type HashLineState } from "./syntax/python/main";
 import { rustLineResult, rustLineSpans } from "./syntax/rust/main";
 import { shellLineSpans } from "./syntax/shell/main";
 import { typescriptLineResult, typescriptLineSpans, type ScriptSyntaxState } from "./syntax/typescript/main";
@@ -32,7 +32,7 @@ export type LineMode =
   | "shell"
   | "fallback";
 
-type LineSyntaxState = ScriptSyntaxState | SlashBlockState | MarkupState;
+type LineSyntaxState = ScriptSyntaxState | HashLineState | SlashBlockState | MarkupState;
 
 /**
  * 根据文本类型解析行样式。
@@ -45,6 +45,12 @@ export function styleForLine(line: string, mode: LineMode): Record<string, strin
   return {};
 }
 
+/**
+ * 根据文本类型解析无跨行状态的行内高亮片段。
+ * @param line 原始行文本。
+ * @param mode 文本模式。
+ * @returns 行内高亮片段。
+ */
 export function spansForLine(line: string, mode: LineMode): LineTextSpan[] {
   if (mode === "json") return jsonLineSpans(line);
   if (mode === "html") return htmlLineSpans(line);
@@ -61,8 +67,13 @@ export function spansForLine(line: string, mode: LineMode): LineTextSpan[] {
   return [];
 }
 
+/**
+ * 创建指定文本类型的跨行语法状态。
+ * @param mode 文本模式。
+ * @returns 跨行语法状态；无需状态的模式返回 null。
+ */
 export function createLineSyntaxState(mode: LineMode): LineSyntaxState | null {
-  if (mode === "typescript" || mode === "javascript") return { inBlockComment: false };
+  if (mode === "typescript" || mode === "javascript" || mode === "python") return { inBlockComment: false };
   if (mode === "c" || mode === "cpp" || mode === "rust" || mode === "java" || mode === "css") return { inBlockComment: false };
   if (mode === "html" || mode === "vue") {
     return { inComment: false, inScript: false, inStyle: false, inScriptBlockComment: false, inStyleBlockComment: false };
@@ -70,6 +81,13 @@ export function createLineSyntaxState(mode: LineMode): LineSyntaxState | null {
   return null;
 }
 
+/**
+ * 根据文本类型和上一行状态解析行内高亮片段。
+ * @param line 原始行文本。
+ * @param mode 文本模式。
+ * @param state 上一行遗留的语法状态。
+ * @returns 行内高亮片段。
+ */
 export function spansForLineWithState(line: string, mode: LineMode, state: LineSyntaxState | null): LineTextSpan[] {
   if (!state) return spansForLine(line, mode);
   if (mode === "typescript") {
@@ -82,6 +100,12 @@ export function spansForLineWithState(line: string, mode: LineMode, state: LineS
     const scriptState = state as ScriptSyntaxState;
     const result = javascriptLineResult(line, scriptState);
     syncCodeSyntaxState(scriptState, result.state);
+    return result.spans;
+  }
+  if (mode === "python") {
+    const hashState = state as HashLineState;
+    const result = pythonLineResult(line, hashState);
+    syncCodeSyntaxState(hashState, result.state);
     return result.spans;
   }
   if (mode === "c") {

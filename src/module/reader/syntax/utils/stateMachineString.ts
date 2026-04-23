@@ -11,10 +11,10 @@ import type { CodeStringMatch, CodeSyntaxOptions, CodeSyntaxState } from "./stat
  * @returns 已消费的结束位置。
  */
 export function readStoredString(line: string, index: number, state: CodeSyntaxState, tokens: SyntaxToken[]): number {
-  const end = findStringEnd(line, index, state.stringEnd ?? "", state.stringEscape ?? null);
-  tokens.push({ start: index, end, kind: "string" });
-  if (end < line.length) clearStringState(state);
-  return end;
+  const result = findStringEnd(line, index, state.stringEnd ?? "", state.stringEscape ?? null);
+  tokens.push({ start: index, end: result.end, kind: "string" });
+  if (result.closed) clearStringState(state);
+  return result.end;
 }
 
 /**
@@ -30,10 +30,10 @@ export function readStoredString(line: string, index: number, state: CodeSyntaxS
 export function readStringToken(line: string, index: number, state: CodeSyntaxState, options: CodeSyntaxOptions, tokens: SyntaxToken[]): number | null {
   const match = matchStringStart(line, index, options);
   if (!match) return null;
-  const end = findStringEnd(line, index + match.startLength, match.end, match.escape ?? null);
-  tokens.push({ start: index, end, kind: "string" });
-  if (end >= line.length && match.multiline) setStringState(state, match);
-  return end;
+  const result = findStringEnd(line, index + match.startLength, match.end, match.escape ?? null);
+  tokens.push({ start: index, end: result.end, kind: "string" });
+  if (!result.closed && match.multiline) setStringState(state, match);
+  return result.end;
 }
 
 /**
@@ -72,19 +72,19 @@ function matchStringStart(line: string, index: number, options: CodeSyntaxOption
  * @param start 字符串内容起始位置。
  * @param endMark 字符串结束符。
  * @param escape 转义符；没有转义规则时传 null。
- * @returns 字符串 token 结束位置。
+ * @returns 字符串 token 结束位置和是否已经遇到结束符。
  */
-function findStringEnd(line: string, start: number, endMark: string, escape: string | null): number {
+function findStringEnd(line: string, start: number, endMark: string, escape: string | null): { end: number; closed: boolean } {
   let index = start;
   while (index < line.length) {
     if (escape && line.startsWith(escape, index)) {
       index += escape.length + 1;
       continue;
     }
-    if (line.startsWith(endMark, index)) return index + endMark.length;
+    if (line.startsWith(endMark, index)) return { end: index + endMark.length, closed: true };
     index += 1;
   }
-  return line.length;
+  return { end: line.length, closed: false };
 }
 
 /**
