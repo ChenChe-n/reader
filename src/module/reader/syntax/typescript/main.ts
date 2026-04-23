@@ -1,5 +1,5 @@
 import type { LineTextSpan } from "../../../../types";
-import { isIdentifierPart, isIdentifierStart, nextNonSpace, readKeywordTokenEnd, readQuotedString, readTemplateString } from "../utils/scan";
+import { nextNonSpace, readIdentifierEnd, readKeywordTokenEnd, readQuotedString, readTemplateString } from "../utils/scan";
 import { tokensToSpans, type SyntaxToken } from "../utils/tokens";
 
 export interface ScriptSyntaxState {
@@ -126,10 +126,10 @@ export function scriptLineResult(line: string, keywords: ReadonlySet<string>, st
       index = keywordEnd;
       continue;
     }
-    if (isIdentifierStart(char)) {
+    const identifierEnd = readIdentifierEnd(line, index);
+    if (identifierEnd !== null) {
       const start = index;
-      index += 1;
-      while (index < line.length && isIdentifierPart(line[index])) index += 1;
+      index = identifierEnd;
       const word = line.slice(start, index);
       if (keywords.has(word)) continue;
       else if (nextNonSpace(line, index) === "(") tokens.push({ start, end: index, kind: "function" });

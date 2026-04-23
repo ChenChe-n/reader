@@ -1,9 +1,35 @@
+/**
+ * 判断字符是否可以作为国际化标识符开头。
+ *
+ * @param char 待检查的单个字符。
+ * @returns 如果字符可作为标识符开头则返回 true。
+ */
 export function isIdentifierStart(char: string): boolean {
-  return /[A-Za-z_$]/.test(char);
+  return /^[\p{L}_$]$/u.test(char);
 }
 
+/**
+ * 判断字符是否可以作为国际化标识符后续字符。
+ *
+ * @param char 待检查的单个字符。
+ * @returns 如果字符可作为标识符后续字符则返回 true。
+ */
 export function isIdentifierPart(char: string): boolean {
-  return /[A-Za-z0-9_$]/.test(char);
+  return /^[\p{L}\p{N}\p{M}_$]$/u.test(char);
+}
+
+/**
+ * 读取从指定位置开始的国际化标识符结束位置。
+ *
+ * @param line 当前行文本。
+ * @param start 标识符起始位置。
+ * @returns 如果起始位置是标识符开头则返回结束位置，否则返回 null。
+ */
+export function readIdentifierEnd(line: string, start: number): number | null {
+  if (!isIdentifierStart(line[start] ?? "")) return null;
+  let index = start + 1;
+  while (index < line.length && isIdentifierPart(line[index])) index += 1;
+  return index;
 }
 
 /**

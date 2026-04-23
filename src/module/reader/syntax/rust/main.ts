@@ -47,6 +47,5 @@ export function rustLineSpans(line: string): LineTextSpan[] {
 }
 
 export function rustLineResult(line: string, state: SlashBlockState): SlashBlockResult {
-  return slashBlockLineResult(line, state, { keywords: RUST_KEYWORDS, functionPattern: "call" });
+  return slashBlockLineResult(line, state, { keywords: RUST_KEYWORDS });
 }
-

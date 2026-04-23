@@ -16,6 +16,5 @@ export function cssLineSpans(line: string): LineTextSpan[] {
 }
 
 export function cssLineResult(line: string, state: SlashBlockState): SlashBlockResult {
-  return slashBlockLineResult(line, state, { keywords: CSS_KEYWORDS, lineComment: "\u0000", functionPattern: "call" });
+  return slashBlockLineResult(line, state, { keywords: CSS_KEYWORDS, lineComment: "\u0000" });
 }
-

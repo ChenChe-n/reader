@@ -1,5 +1,5 @@
 import type { LineTextSpan } from "../../../../types";
-import { isIdentifierPart, isIdentifierStart, nextNonSpace, readKeywordTokenEnd, readQuotedString, readTemplateString } from "./scan";
+import { nextNonSpace, readIdentifierEnd, readKeywordTokenEnd, readQuotedString, readTemplateString } from "./scan";
 import { tokensToSpans, type SyntaxToken } from "./tokens";
 
 export interface SlashBlockState {
@@ -17,7 +17,6 @@ export interface SlashBlockOptions {
   blockStart?: string;
   blockEnd?: string;
   templateStrings?: boolean;
-  functionPattern?: "call" | "declaration";
 }
 
 export function slashBlockLineResult(line: string, state: SlashBlockState, options: SlashBlockOptions): SlashBlockResult {
@@ -73,13 +72,13 @@ export function slashBlockLineResult(line: string, state: SlashBlockState, optio
       index = keywordEnd;
       continue;
     }
-    if (isIdentifierStart(char)) {
+    const identifierEnd = readIdentifierEnd(line, index);
+    if (identifierEnd !== null) {
       const start = index;
-      index += 1;
-      while (index < line.length && isIdentifierPart(line[index])) index += 1;
+      index = identifierEnd;
       const word = line.slice(start, index);
       if (options.keywords.has(word)) continue;
-      else if (isFunctionToken(line, index, options.functionPattern ?? "call")) tokens.push({ start, end: index, kind: "function" });
+      else if (isFunctionToken(line, index)) tokens.push({ start, end: index, kind: "function" });
       continue;
     }
     index += 1;
@@ -88,8 +87,13 @@ export function slashBlockLineResult(line: string, state: SlashBlockState, optio
   return { spans: tokensToSpans(tokens, line.length), state: nextState };
 }
 
-function isFunctionToken(line: string, index: number, pattern: "call" | "declaration"): boolean {
-  if (nextNonSpace(line, index) !== "(") return false;
-  if (pattern === "call") return true;
-  return /\b[A-Za-z_][A-Za-z0-9_<>,\s:*&]*\s+$/.test(line.slice(0, index));
+/**
+ * 判断标识符后方是否是允许空白间隔的函数调用或声明。
+ *
+ * @param line 当前行文本。
+ * @param index 标识符结束位置。
+ * @returns 如果后续第一个非空白字符是左括号则返回 true。
+ */
+function isFunctionToken(line: string, index: number): boolean {
+  return nextNonSpace(line, index) === "(";
 }

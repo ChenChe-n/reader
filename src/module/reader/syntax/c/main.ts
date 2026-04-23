@@ -7,5 +7,5 @@ export function cLineSpans(line: string): LineTextSpan[] {
 }
 
 export function cLineResult(line: string, state: SlashBlockState): SlashBlockResult {
-  return slashBlockLineResult(line, state, { keywords: C_KEYWORDS, functionPattern: "declaration" });
+  return slashBlockLineResult(line, state, { keywords: C_KEYWORDS });
 }

@@ -7,5 +7,5 @@ export function cppLineSpans(line: string): LineTextSpan[] {
 }
 
 export function cppLineResult(line: string, state: SlashBlockState): SlashBlockResult {
-  return slashBlockLineResult(line, state, { keywords: CPP_KEYWORDS, functionPattern: "call" });
+  return slashBlockLineResult(line, state, { keywords: CPP_KEYWORDS });
 }

@@ -61,6 +61,5 @@ export function javaLineSpans(line: string): LineTextSpan[] {
 }
 
 export function javaLineResult(line: string, state: SlashBlockState): SlashBlockResult {
-  return slashBlockLineResult(line, state, { keywords: JAVA_KEYWORDS, functionPattern: "call" });
+  return slashBlockLineResult(line, state, { keywords: JAVA_KEYWORDS });
 }
-
