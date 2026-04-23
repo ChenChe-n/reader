@@ -1,15 +1,8 @@
 import type { LineTextSpan } from "../../../../types";
-import { nextNonSpace, readKeywordTokenEnd, readProgramTokenEnd, readQuotedString, readTemplateString } from "./scan";
-import { tokensToSpans, type SyntaxToken } from "./tokens";
+import { codeLineResult, type CodeLineResult, type CodeStringRule, type CodeSyntaxOptions, type CodeSyntaxState } from "./stateMachine";
 
-export interface SlashBlockState {
-  inBlockComment: boolean;
-}
-
-export interface SlashBlockResult {
-  spans: LineTextSpan[];
-  state: SlashBlockState;
-}
+export type SlashBlockState = CodeSyntaxState;
+export type SlashBlockResult = CodeLineResult;
 
 export interface SlashBlockOptions {
   keywords: ReadonlySet<string>;
@@ -17,103 +10,72 @@ export interface SlashBlockOptions {
   blockStart?: string;
   blockEnd?: string;
   templateStrings?: boolean;
+  strings?: readonly CodeStringRule[];
+  stringMatchers?: CodeSyntaxOptions["stringMatchers"];
 }
 
-type TokenScanState = "normal" | "comment" | "function" | "string";
+const DEFAULT_STRINGS: readonly CodeStringRule[] = [
+  { start: '"', end: '"', escape: "\\" },
+  { start: "'", end: "'", escape: "\\" }
+];
 
+/**
+ * 使用公共状态机解析类 C 块注释语法的一行文本。
+ *
+ * @param line 当前行文本。
+ * @param state 上一行遗留的扫描状态。
+ * @param options 当前语言关键字和语法符号配置。
+ * @returns 当前行高亮片段和下一行扫描状态。
+ */
 export function slashBlockLineResult(line: string, state: SlashBlockState, options: SlashBlockOptions): SlashBlockResult {
-  const tokens: SyntaxToken[] = [];
-  const nextState = { ...state };
-  const lineComment = options.lineComment ?? "//";
-  const blockStart = options.blockStart ?? "/*";
-  const blockEnd = options.blockEnd ?? "*/";
-  let index = 0;
-
-  while (index < line.length) {
-    const scanState = slashBlockTokenState(line, index, nextState, options, lineComment, blockStart);
-
-    if (scanState === "comment") {
-      const close = line.indexOf(blockEnd, index);
-      if (nextState.inBlockComment) {
-        if (close < 0) {
-          tokens.push({ start: index, end: line.length, kind: "comment" });
-          return { spans: tokensToSpans(tokens, line.length), state: nextState };
-        }
-        tokens.push({ start: index, end: close + blockEnd.length, kind: "comment" });
-        nextState.inBlockComment = false;
-        index = close + blockEnd.length;
-        continue;
-      }
-      if (line.startsWith(lineComment, index)) {
-        tokens.push({ start: index, end: line.length, kind: "comment" });
-        break;
-      }
-      const blockClose = line.indexOf(blockEnd, index + blockStart.length);
-      const end = blockClose >= 0 ? blockClose + blockEnd.length : line.length;
-      tokens.push({ start: index, end, kind: "comment" });
-      nextState.inBlockComment = blockClose < 0;
-      index = end;
-      continue;
-    }
-
-    if (scanState === "string") {
-      const end = line[index] === "`" ? readTemplateString(line, index) : readQuotedString(line, index);
-      tokens.push({ start: index, end, kind: "string" });
-      index = end;
-      continue;
-    }
-
-    const tokenEnd = readProgramTokenEnd(line, index);
-    if (tokenEnd !== null) {
-      if (scanState === "function") tokens.push({ start: index, end: tokenEnd, kind: "function" });
-      else {
-        const keywordEnd = readKeywordTokenEnd(line, index, options.keywords);
-        if (keywordEnd !== null) tokens.push({ start: index, end: keywordEnd, kind: "keyword" });
-      }
-      index = tokenEnd;
-      continue;
-    }
-
-    index += 1;
-  }
-
-  return { spans: tokensToSpans(tokens, line.length), state: nextState };
+  return codeLineResult(line, state, slashBlockOptions(options));
 }
 
 /**
- * 根据当前位置内容判断扫描器应进入的 token 状态。
+ * 使用公共状态机解析无跨行状态的一行文本。
  *
  * @param line 当前行文本。
- * @param index 当前扫描位置。
- * @param state 当前跨行扫描状态。
- * @param options 当前语言扫描选项。
+ * @param options 当前语言关键字和语法符号配置。
+ * @returns 当前行高亮片段。
+ */
+export function slashBlockLineSpans(line: string, options: SlashBlockOptions): LineTextSpan[] {
+  return slashBlockLineResult(line, { inBlockComment: false }, options).spans;
+}
+
+/**
+ * 将类 C 扫描配置转换为公共状态机配置。
+ *
+ * @param options 类 C 扫描配置。
+ * @returns 公共状态机配置。
+ */
+function slashBlockOptions(options: SlashBlockOptions): CodeSyntaxOptions {
+  return {
+    keywords: options.keywords,
+    lineComments: lineCommentList(options.lineComment),
+    blockComments: [{ start: options.blockStart ?? "/*", end: options.blockEnd ?? "*/" }],
+    strings: stringList(options),
+    stringMatchers: options.stringMatchers
+  };
+}
+
+/**
+ * 根据行注释配置生成公共状态机行注释列表。
+ *
  * @param lineComment 行注释起始符。
- * @param blockStart 块注释起始符。
- * @returns 当前位置对应的 token 状态。
+ * @returns 行注释列表。
  */
-function slashBlockTokenState(
-  line: string,
-  index: number,
-  state: SlashBlockState,
-  options: SlashBlockOptions,
-  lineComment: string,
-  blockStart: string
-): TokenScanState {
-  if (state.inBlockComment || line.startsWith(lineComment, index) || line.startsWith(blockStart, index)) return "comment";
-  const char = line[index];
-  if (char === '"' || char === "'" || (options.templateStrings && char === "`")) return "string";
-  const tokenEnd = readProgramTokenEnd(line, index);
-  if (tokenEnd !== null && !options.keywords.has(line.slice(index, tokenEnd)) && isFunctionToken(line, tokenEnd)) return "function";
-  return "normal";
+function lineCommentList(lineComment: string | undefined): readonly string[] {
+  if (lineComment === "\u0000") return [];
+  return [lineComment ?? "//"];
 }
 
 /**
- * 判断普通 token 后方是否是允许空白间隔的函数调用或声明。
+ * 根据字符串配置生成公共状态机字符串列表。
  *
- * @param line 当前行文本。
- * @param index token 结束位置。
- * @returns 如果后续第一个非空白字符是左括号则返回 true。
+ * @param options 类 C 扫描配置。
+ * @returns 字符串配置列表。
  */
-function isFunctionToken(line: string, index: number): boolean {
-  return nextNonSpace(line, index) === "(";
+function stringList(options: SlashBlockOptions): readonly CodeStringRule[] {
+  const base = options.strings ?? DEFAULT_STRINGS;
+  return options.templateStrings ? [...base, { start: "`", end: "`", escape: "\\", multiline: true }] : base;
 }

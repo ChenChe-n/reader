@@ -13,6 +13,7 @@ import { typescriptLineResult, typescriptLineSpans, type ScriptSyntaxState } fro
 import { vueLineResult, vueLineSpans } from "./syntax/vue/main";
 import type { MarkupState } from "./syntax/utils/markup";
 import type { SlashBlockState } from "./syntax/utils/slashBlock";
+import { syncCodeSyntaxState } from "./syntax/utils/stateMachine";
 
 export type LineMode =
   | "markdown"
@@ -74,43 +75,43 @@ export function spansForLineWithState(line: string, mode: LineMode, state: LineS
   if (mode === "typescript") {
     const scriptState = state as ScriptSyntaxState;
     const result = typescriptLineResult(line, scriptState);
-    scriptState.inBlockComment = result.state.inBlockComment;
+    syncCodeSyntaxState(scriptState, result.state);
     return result.spans;
   }
   if (mode === "javascript") {
     const scriptState = state as ScriptSyntaxState;
     const result = javascriptLineResult(line, scriptState);
-    scriptState.inBlockComment = result.state.inBlockComment;
+    syncCodeSyntaxState(scriptState, result.state);
     return result.spans;
   }
   if (mode === "c") {
     const blockState = state as SlashBlockState;
     const result = cLineResult(line, blockState);
-    blockState.inBlockComment = result.state.inBlockComment;
+    syncCodeSyntaxState(blockState, result.state);
     return result.spans;
   }
   if (mode === "cpp") {
     const blockState = state as SlashBlockState;
     const result = cppLineResult(line, blockState);
-    blockState.inBlockComment = result.state.inBlockComment;
+    syncCodeSyntaxState(blockState, result.state);
     return result.spans;
   }
   if (mode === "rust") {
     const blockState = state as SlashBlockState;
     const result = rustLineResult(line, blockState);
-    blockState.inBlockComment = result.state.inBlockComment;
+    syncCodeSyntaxState(blockState, result.state);
     return result.spans;
   }
   if (mode === "java") {
     const blockState = state as SlashBlockState;
     const result = javaLineResult(line, blockState);
-    blockState.inBlockComment = result.state.inBlockComment;
+    syncCodeSyntaxState(blockState, result.state);
     return result.spans;
   }
   if (mode === "css") {
     const blockState = state as SlashBlockState;
     const result = cssLineResult(line, blockState);
-    blockState.inBlockComment = result.state.inBlockComment;
+    syncCodeSyntaxState(blockState, result.state);
     return result.spans;
   }
   if (mode === "html") {
