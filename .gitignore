@@ -16,3 +16,6 @@ scripts/RC*
 
 # Nix build files
 **/result
+
+# build files
+build/
