@@ -15,7 +15,7 @@
         :style="{ minHeight: `${rowHeightPx(line.index)}px` }"
       >
         <span class="line-text-number">{{ line.number }}</span>
-        <span class="line-text-data" :style="line.style"><template v-if="line.chunks.length"><span v-for="chunk in line.chunks" :key="chunk.key" :style="chunk.style">{{ chunk.text }}</span></template><template v-else>{{ line.data || " " }}</template></span>
+        <span class="line-text-data" :style="line.style"><template v-if="line.chunks.length"><span v-for="chunk in line.chunks" :key="chunk.key" :class="chunk.className" :style="chunk.style">{{ chunk.text }}</span></template><template v-else>{{ line.data || " " }}</template></span>
       </div>
     </div>
     <button
@@ -40,6 +40,9 @@ import { useWrappedLineHeights } from "./lineText/useWrappedLineHeights";
 
 const props = defineProps<{
   document: LineTextDocument;
+  searchQuery?: string;
+  activeSearchLine?: number;
+  activeSearchStart?: number;
 }>();
 
 const LINE_H = 22;
@@ -123,6 +126,7 @@ interface LineTextChunk {
   key: string;
   text: string;
   style: Record<string, string>;
+  className?: string;
 }
 
 const visibleLines = computed(() => {
@@ -150,7 +154,7 @@ function rowForIndex(index: number): VisibleLine {
     return { index, number: "", data: "", style: {}, chunks: [], spacer: true };
   }
   const line = props.document.lines[String(index)] || { data: "", style: {} };
-  return { index, number: String(index + 1), data: line.data, style: line.style, chunks: chunksForLine(line.data, line.spans), spacer: false };
+  return { index, number: String(index + 1), data: line.data, style: line.style, chunks: chunksForLine(index, line.data, line.spans), spacer: false };
 }
 
 /**
@@ -162,8 +166,23 @@ function lineForIndex(index: number): { data: string; style: Record<string, stri
   return props.document.lines[String(index)] || { data: "", style: {} };
 }
 
-function chunksForLine(data: string, spans: LineTextSpan[] | undefined): LineTextChunk[] {
-  if (!spans?.length) return [];
+function chunksForLine(lineIndex: number, data: string, spans: LineTextSpan[] | undefined): LineTextChunk[] {
+  const chunks: LineTextChunk[] = [];
+  const baseChunks = chunksForSyntax(data, spans);
+  const matches = searchRangesForLine(data);
+  if (!matches.length) return baseChunks;
+  let keyIndex = 0;
+  for (const chunk of baseChunks) {
+    const start = keyIndex;
+    const end = start + chunk.text.length;
+    chunks.push(...splitChunkBySearch(lineIndex, chunk, start, end));
+    keyIndex = end;
+  }
+  return chunks;
+}
+
+function chunksForSyntax(data: string, spans: LineTextSpan[] | undefined): LineTextChunk[] {
+  if (!spans?.length) return data ? [{ key: "plain", text: data, style: {} }] : [];
   const chunks: LineTextChunk[] = [];
   let cursor = 0;
   spans.forEach((span, index) => {
@@ -175,6 +194,54 @@ function chunksForLine(data: string, spans: LineTextSpan[] | undefined): LineTex
   });
   if (cursor < data.length) chunks.push({ key: "plain-tail", text: data.slice(cursor), style: {} });
   return chunks;
+}
+
+function searchRangesForLine(data: string): Array<{ start: number; end: number }> {
+  const query = normalizedSearchQuery();
+  if (!query) return [];
+  const source = data.toLocaleLowerCase();
+  const ranges: Array<{ start: number; end: number }> = [];
+  let index = source.indexOf(query);
+  while (index >= 0) {
+    ranges.push({ start: index, end: index + query.length });
+    index = source.indexOf(query, index + query.length);
+  }
+  return ranges;
+}
+
+function splitChunkBySearch(lineIndex: number, chunk: LineTextChunk, chunkStart: number, chunkEnd: number): LineTextChunk[] {
+  const ranges = searchRangesForLine(lineForIndex(lineIndex).data).filter(range => range.end > chunkStart && range.start < chunkEnd);
+  if (!ranges.length) return [chunk];
+  const result: LineTextChunk[] = [];
+  let cursor = chunkStart;
+  for (const range of ranges) {
+    const start = Math.max(range.start, chunkStart);
+    const end = Math.min(range.end, chunkEnd);
+    if (start > cursor) {
+      result.push({ key: `${chunk.key}-plain-${cursor}`, text: chunk.text.slice(cursor - chunkStart, start - chunkStart), style: chunk.style });
+    }
+    result.push({
+      key: `${chunk.key}-match-${start}`,
+      text: chunk.text.slice(start - chunkStart, end - chunkStart),
+      style: chunk.style,
+      className: searchClassName(lineIndex, start)
+    });
+    cursor = end;
+  }
+  if (cursor < chunkEnd) {
+    result.push({ key: `${chunk.key}-plain-${cursor}`, text: chunk.text.slice(cursor - chunkStart), style: chunk.style });
+  }
+  return result;
+}
+
+function normalizedSearchQuery(): string {
+  return (props.searchQuery || "").trim().toLocaleLowerCase();
+}
+
+function searchClassName(lineIndex: number, start: number): string {
+  return lineIndex === props.activeSearchLine && start === props.activeSearchStart
+    ? "line-search-match line-search-match-active"
+    : "line-search-match";
 }
 
 function clampScroll(): void {
@@ -251,5 +318,11 @@ function scrollToTop(): void {
   resetScroll();
 }
 
-defineExpose({ scrollToTop });
+function scrollToLine(lineNumber: number): void {
+  const index = Math.max(0, Math.min(Math.trunc(lineNumber) - 1, props.document.lineCount - 1));
+  const top = prefixSum.value[index] ?? 0;
+  scrollYFixed.value = clampBig(toFixed(top), maxScrollYFixed.value);
+}
+
+defineExpose({ scrollToTop, scrollToLine });
 </script>

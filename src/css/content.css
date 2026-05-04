@@ -273,6 +273,19 @@
   color: var(--text);
 }
 
+.line-search-match,
+.markdown-search-match {
+  border-radius: 3px;
+  background: color-mix(in srgb, #f6c84c 68%, transparent);
+  color: inherit;
+}
+
+.line-search-match-active,
+.markdown-search-match-active {
+  background: color-mix(in srgb, var(--accent) 34%, #f6c84c);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
 .line-text-row-wrap .line-text-data {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

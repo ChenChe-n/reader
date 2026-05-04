@@ -297,5 +297,15 @@ function scrollToTop(): void {
   resetScroll();
 }
 
-defineExpose({ scrollToTop });
+function scrollToLine(lineNumber: number): void {
+  const index = Math.max(0, Math.min(Math.trunc(lineNumber) - 1, lines.value.length - 1));
+  const top = prefixSum.value[index] ?? 0;
+  scrollYFixed.value = clampBig(toFixed(top), maxScrollYFixed.value);
+  nextTick(() => {
+    const area = areaRefs.get(index);
+    area?.focus();
+  });
+}
+
+defineExpose({ scrollToTop, scrollToLine });
 </script>

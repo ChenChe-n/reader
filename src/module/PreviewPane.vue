@@ -24,11 +24,45 @@
         <button class="button icon-only" title="复制文本内容" :disabled="!hasText" @click="$emit('copy')">
           <IconView name="ico-copy" />
         </button>
+        <button class="button icon-only" title="当前文件查找" :disabled="!canSearchCurrentFile" @click="openSearchPanel">
+          <IconView name="file-search" />
+        </button>
         <button class="button icon-only" title="下载当前文件" :disabled="!hasFile" @click="$emit('download')">
           <IconView name="ico-download" />
         </button>
       </div>
     </div>
+
+    <form v-if="searchPanelOpen" class="file-search-panel" @submit.prevent="goToNextSearchMatch">
+      <input
+        ref="searchInputRef"
+        v-model="searchKeyword"
+        class="file-search-input"
+        type="search"
+        placeholder="查找当前文件"
+        @keydown.esc.prevent="closeSearchPanel"
+      />
+      <span class="file-search-count">{{ searchStatusLabel }}</span>
+      <button class="button icon-only" type="button" title="上一个匹配" :disabled="!hasSearchMatches" @click="goToPreviousSearchMatch">
+        <IconView name="ico-prev" />
+      </button>
+      <button class="button icon-only" type="submit" title="下一个匹配" :disabled="!hasSearchMatches">
+        <IconView name="ico-next" />
+      </button>
+      <input
+        v-model="lineJumpInput"
+        class="line-jump-input"
+        type="text"
+        inputmode="numeric"
+        placeholder="行号"
+        @keydown.enter.prevent="jumpToInputLine"
+        @keydown.esc.prevent="closeSearchPanel"
+      />
+      <button class="button" type="button" :disabled="!canJumpToLine" @click="jumpToInputLine">跳转</button>
+      <button class="button icon-only" type="button" title="关闭查找" @click="closeSearchPanel">
+        <IconView name="ico-panel-close" />
+      </button>
+    </form>
 
     <div
       v-if="!previewEditing"
@@ -37,8 +71,15 @@
       @click="handleContentClick"
     >
       <div v-if="preview.kind === 'notice'" class="notice">{{ preview.message }}</div>
-      <article v-else-if="preview.kind === 'markdown'" class="markdown" v-html="preview.html"></article>
-      <LineTextViewer v-else-if="preview.kind === 'lineText'" ref="lineViewerRef" :document="preview.lineText" />
+      <article v-else-if="preview.kind === 'markdown'" ref="markdownRef" class="markdown" v-html="preview.html"></article>
+      <LineTextViewer
+        v-else-if="preview.kind === 'lineText'"
+        ref="lineViewerRef"
+        :document="preview.lineText"
+        :search-query="searchKeyword"
+        :active-search-line="activeSearchMatch?.lineIndex"
+        :active-search-start="activeSearchMatch?.start"
+      />
       <SpreadsheetViewer v-else-if="preview.kind === 'spreadsheet'" :document="preview.spreadsheet" />
       <iframe
         v-else-if="preview.kind === 'html'"
@@ -156,6 +197,7 @@ const props = defineProps<{
   fileMeta: string;
   previewTiming: PreviewTiming;
   hasText: boolean;
+  currentText: string;
   hasFile: boolean;
   canSave: boolean;
   canEditPreview: boolean;
@@ -189,9 +231,15 @@ const emit = defineEmits<{
 }>();
 
 const contentRef = ref<HTMLElement | null>(null);
+const markdownRef = ref<HTMLElement | null>(null);
 const lineViewerRef = ref<InstanceType<typeof LineTextViewer> | null>(null);
 const lineEditorRef = ref<InstanceType<typeof LineTextEditor> | null>(null);
+const searchInputRef = ref<HTMLInputElement | null>(null);
 const htmlPreviewUrl = ref("about:blank");
+const searchPanelOpen = ref(false);
+const searchKeyword = ref("");
+const activeSearchIndex = ref(-1);
+const lineJumpInput = ref("");
 const iframeSandbox = "allow-forms allow-popups allow-scripts allow-modals allow-same-origin";
 const fullscreenTip = computed(() => (props.isPreviewMaximized ? "还原预览" : "最大化预览"));
 const editToggleTip = computed(() => (props.previewEditing ? "关闭编辑" : "编辑"));
@@ -209,6 +257,34 @@ const showImagePager = computed(
   () => showImageTools.value && props.imageCount > 1
 );
 const imageDisplayClass = computed(() => `media-stage-image-${props.imageDisplayMode}`);
+const searchableText = computed(() => (props.preview.kind === "lineText" || props.preview.kind === "markdown" ? props.currentText : ""));
+const canSearchCurrentFile = computed(() => !props.previewEditing && searchableText.value.length > 0);
+const textLines = computed(() => searchableText.value.split(/\r\n|\n|\r/));
+const searchMatches = computed(() => {
+  const query = searchKeyword.value.trim().toLocaleLowerCase();
+  if (!query || !canSearchCurrentFile.value) return [];
+  const matches: Array<{ lineIndex: number; start: number; end: number }> = [];
+  textLines.value.forEach((line, lineIndex) => {
+    const source = line.toLocaleLowerCase();
+    let start = source.indexOf(query);
+    while (start >= 0) {
+      matches.push({ lineIndex, start, end: start + query.length });
+      start = source.indexOf(query, start + query.length);
+    }
+  });
+  return matches;
+});
+const hasSearchMatches = computed(() => searchMatches.value.length > 0);
+const activeSearchMatch = computed(() => searchMatches.value[activeSearchIndex.value] || null);
+const searchStatusLabel = computed(() => {
+  if (!searchKeyword.value.trim()) return "请输入关键词";
+  if (!searchMatches.value.length) return "0 / 0";
+  return `${activeSearchIndex.value + 1} / ${searchMatches.value.length}`;
+});
+const canJumpToLine = computed(() => {
+  const line = Number(lineJumpInput.value);
+  return Number.isInteger(line) && line >= 1 && line <= textLines.value.length;
+});
 
 /**
  * 滚动预览区域到顶部。
@@ -224,6 +300,80 @@ function scrollToTop(): void {
     return;
   }
   contentRef.value?.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function openSearchPanel(): void {
+  if (!canSearchCurrentFile.value) return;
+  searchPanelOpen.value = true;
+  nextTick(() => {
+    searchInputRef.value?.focus();
+    searchInputRef.value?.select();
+  });
+}
+
+function closeSearchPanel(): void {
+  searchPanelOpen.value = false;
+  searchKeyword.value = "";
+  activeSearchIndex.value = -1;
+  clearMarkdownSearchMarks();
+}
+
+function goToNextSearchMatch(): void {
+  if (!searchMatches.value.length) return;
+  activeSearchIndex.value = (activeSearchIndex.value + 1) % searchMatches.value.length;
+  scrollToActiveSearchMatch();
+}
+
+function goToPreviousSearchMatch(): void {
+  if (!searchMatches.value.length) return;
+  activeSearchIndex.value = activeSearchIndex.value <= 0 ? searchMatches.value.length - 1 : activeSearchIndex.value - 1;
+  scrollToActiveSearchMatch();
+}
+
+function jumpToInputLine(): void {
+  if (!canJumpToLine.value) return;
+  scrollToLine(Number(lineJumpInput.value));
+}
+
+function scrollToLine(lineNumber: number): void {
+  if (props.preview.kind === "lineText") {
+    lineViewerRef.value?.scrollToLine(lineNumber);
+    return;
+  }
+  if (props.preview.kind === "markdown") {
+    const lineText = textLines.value[Math.max(0, lineNumber - 1)]?.trim();
+    scrollMarkdownToText(lineText);
+  }
+}
+
+function scrollToActiveSearchMatch(): void {
+  const match = activeSearchMatch.value;
+  if (!match) return;
+  if (props.preview.kind === "lineText") {
+    lineViewerRef.value?.scrollToLine(match.lineIndex + 1);
+    return;
+  }
+  if (props.preview.kind === "markdown") {
+    nextTick(() => {
+      applyMarkdownSearchMarks();
+      markdownRef.value
+        ?.querySelector(".markdown-search-match-active")
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }
+}
+
+function scrollMarkdownToText(text: string | undefined): void {
+  const root = markdownRef.value;
+  if (!text || !root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (node.textContent?.includes(text)) {
+      (node.parentElement || markdownRef.value)?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
+  }
 }
 
 /**
@@ -250,6 +400,20 @@ function handleContentClick(event: MouseEvent): void {
   emit("open-relative", href);
 }
 
+function handleSearchShortcut(event: KeyboardEvent): void {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === "f" && canSearchCurrentFile.value) {
+    event.preventDefault();
+    openSearchPanel();
+    return;
+  }
+  if (!searchPanelOpen.value || !canSearchCurrentFile.value) return;
+  if (event.key === "F3" || ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === "g")) {
+    event.preventDefault();
+    if (event.shiftKey) goToPreviousSearchMatch();
+    else goToNextSearchMatch();
+  }
+}
+
 /**
  * 处理 HTML iframe 发来的相对链接导航消息。
  * @param event message 事件。
@@ -271,6 +435,51 @@ function clearHtmlPreviewUrl(): void {
   htmlPreviewUrl.value = "about:blank";
 }
 
+function clearMarkdownSearchMarks(): void {
+  const root = markdownRef.value;
+  if (!root) return;
+  root.querySelectorAll("mark.markdown-search-match").forEach(mark => {
+    const parent = mark.parentNode;
+    if (!parent) return;
+    parent.replaceChild(document.createTextNode(mark.textContent || ""), mark);
+    parent.normalize();
+  });
+}
+
+function applyMarkdownSearchMarks(): void {
+  clearMarkdownSearchMarks();
+  const root = markdownRef.value;
+  const query = searchKeyword.value.trim();
+  if (!root || !query) return;
+  const lowerQuery = query.toLocaleLowerCase();
+  let seen = 0;
+  const textNodes: Text[] = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: node => node.parentElement?.closest("script, style") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+  });
+  while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
+  textNodes.forEach(node => {
+    const text = node.data;
+    const lower = text.toLocaleLowerCase();
+    let cursor = 0;
+    let index = lower.indexOf(lowerQuery);
+    if (index < 0) return;
+    const fragment = document.createDocumentFragment();
+    while (index >= 0) {
+      if (index > cursor) fragment.append(document.createTextNode(text.slice(cursor, index)));
+      const mark = document.createElement("mark");
+      mark.className = seen === activeSearchIndex.value ? "markdown-search-match markdown-search-match-active" : "markdown-search-match";
+      mark.textContent = text.slice(index, index + query.length);
+      fragment.append(mark);
+      seen += 1;
+      cursor = index + query.length;
+      index = lower.indexOf(lowerQuery, cursor);
+    }
+    if (cursor < text.length) fragment.append(document.createTextNode(text.slice(cursor)));
+    node.replaceWith(fragment);
+  });
+}
+
 function revokeHtmlPreviewUrl(): void {
   if (htmlPreviewUrl.value.startsWith("blob:")) URL.revokeObjectURL(htmlPreviewUrl.value);
 }
@@ -281,8 +490,29 @@ watch(
     if (props.preview.kind !== "markdown" || props.previewEditing) return;
     await nextTick();
     await rewriteRelativeResources(contentRef.value as HTMLElement, props.rootHandle, props.basePathParts, props.createObjectUrl);
+    applyMarkdownSearchMarks();
   },
   { flush: "post" }
+);
+
+watch(searchMatches, matches => {
+  activeSearchIndex.value = matches.length ? 0 : -1;
+  if (props.preview.kind === "markdown") nextTick(applyMarkdownSearchMarks);
+  if (matches.length) nextTick(scrollToActiveSearchMatch);
+});
+
+watch(activeSearchIndex, () => {
+  if (props.preview.kind === "markdown") nextTick(applyMarkdownSearchMarks);
+});
+
+watch(
+  () => props.preview,
+  () => {
+    searchPanelOpen.value = false;
+    searchKeyword.value = "";
+    activeSearchIndex.value = -1;
+    lineJumpInput.value = "";
+  }
 );
 
 watch(
@@ -297,9 +527,13 @@ watch(
   { immediate: true }
 );
 
-onMounted(() => window.addEventListener("message", handlePreviewMessage));
+onMounted(() => {
+  window.addEventListener("message", handlePreviewMessage);
+  window.addEventListener("keydown", handleSearchShortcut);
+});
 onUnmounted(() => {
   window.removeEventListener("message", handlePreviewMessage);
+  window.removeEventListener("keydown", handleSearchShortcut);
   revokeHtmlPreviewUrl();
 });
 </script>

@@ -36,6 +36,7 @@
         :file-meta="fileMeta"
         :preview-timing="previewTiming"
         :has-text="Boolean(currentText)"
+        :current-text="currentText"
         :has-file="Boolean(currentFile)"
         :can-save="canSave"
         :can-edit-preview="canEditPreview"
