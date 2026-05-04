@@ -30,7 +30,7 @@
       <span>{{ pathLabel }}</span>
     </div>
 
-    <div class="file-list">
+    <div ref="fileListRef" class="file-list" @scroll="rememberCurrentScroll">
       <div v-if="!hasCurrentDirectory" class="empty">
         <div class="empty-inner"><p>请选择一个文件夹</p></div>
       </div>
@@ -43,6 +43,7 @@
         :key="`${item.kind}:${item.name}`"
         type="button"
         :title="item.name"
+        :ref="element => setEntryRef(item.name, element)"
         :class="['entry', item.kind === 'directory' ? 'folder' : 'file', { active: selectedName === item.name }]"
         @click="$emit('open-entry', item)"
       >
@@ -55,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, nextTick, onBeforeUpdate, ref, watch } from "vue";
 import type { LocalEntry } from "../types";
 import { iconFor, metaFor } from "../utils/fileKind";
 import IconView from "./IconView.vue";
@@ -84,5 +85,62 @@ const emit = defineEmits<{
 const keywordModel = computed({
   get: () => props.keyword,
   set: value => emit("update:keyword", value)
+});
+
+const entryRefs = ref<Record<string, HTMLElement>>({});
+const fileListRef = ref<HTMLElement | null>(null);
+const scrollPositions = new Map<string, number>();
+
+/**
+ * 记录文件列表项元素，用于选中项自动滚动。
+ * @param name 条目名称。
+ * @param element 条目 DOM 或组件实例。
+ * @returns 无返回值。
+ */
+function setEntryRef(name: string, element: Element | unknown): void {
+  if (element instanceof HTMLElement) entryRefs.value[name] = element;
+}
+
+/**
+ * 将当前选中的文件滚动到侧栏可视区域内。
+ * @returns 异步完成信号。
+ */
+async function scrollSelectedEntryIntoView(): Promise<void> {
+  await nextTick();
+  if (!props.selectedName) return;
+  entryRefs.value[props.selectedName]?.scrollIntoView({ block: "nearest" });
+}
+
+/**
+ * 记录当前目录列表滚动位置。
+ * @returns 无返回值。
+ */
+function rememberCurrentScroll(): void {
+  if (!fileListRef.value) return;
+  scrollPositions.set(props.pathLabel, fileListRef.value.scrollTop);
+}
+
+/**
+ * 恢复指定目录的列表滚动位置。
+ * @param path 目录路径标签。
+ * @returns 异步完成信号。
+ */
+async function restoreDirectoryScroll(path: string): Promise<void> {
+  await nextTick();
+  if (!fileListRef.value) return;
+  fileListRef.value.scrollTop = scrollPositions.get(path) ?? 0;
+}
+
+onBeforeUpdate(() => {
+  entryRefs.value = {};
+});
+
+watch(() => props.selectedName, () => {
+  void scrollSelectedEntryIntoView();
+});
+
+watch(() => props.pathLabel, (path, oldPath) => {
+  if (oldPath && fileListRef.value) scrollPositions.set(oldPath, fileListRef.value.scrollTop);
+  void restoreDirectoryScroll(path);
 });
 </script>

@@ -19,3 +19,6 @@ scripts/RC*
 
 # build files
 build/
+
+# local dev server logs
+vite-dev.*.log

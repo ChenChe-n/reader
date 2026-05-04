@@ -165,6 +165,15 @@ export function isImageFile(file: File, ext: string): boolean {
 }
 
 /**
+ * 判断后缀是否属于图片文件。
+ * @param ext 文件后缀。
+ * @returns 是否为图片后缀。
+ */
+export function isImageExtension(ext: string): boolean {
+  return IMAGE_EXTENSIONS.includes(ext);
+}
+
+/**
  * 判断文件是否是视频。
  * @param file 浏览器 File 对象。
  * @param ext 文件后缀。
