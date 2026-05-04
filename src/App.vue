@@ -89,6 +89,7 @@
       @reset-custom="resetCustomTheme"
       @close="themePanelVisible = false"
     />
+    <TooltipLayer />
   </div>
 </template>
 
@@ -101,6 +102,7 @@ import ConfirmDialog from "./module/ConfirmDialog.vue";
 import FileSidebar from "./module/FileSidebar.vue";
 import PreviewPane from "./module/PreviewPane.vue";
 import ThemePanel from "./module/ThemePanel.vue";
+import TooltipLayer from "./module/TooltipLayer.vue";
 
 const reader = useReader();
 const theme = useThemeState();
