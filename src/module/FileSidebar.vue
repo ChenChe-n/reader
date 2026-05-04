@@ -15,6 +15,15 @@
         <button class="button icon-only" title="回到根目录" :disabled="!hasRoot" @click="$emit('home')">
           <IconView name="ico-home" />
         </button>
+        <button
+          type="button"
+          :class="['button', 'icon-only', { active: globalSearchOpen }]"
+          title="全局搜索"
+          :aria-expanded="globalSearchOpen"
+          @click="toggleGlobalSearch"
+        >
+          <IconView name="file-search" />
+        </button>
         <button class="button icon-only" title="配色设置" @click="$emit('theme')">
           <IconView name="ico-theme" />
         </button>
@@ -23,9 +32,10 @@
         </button>
       </div>
       <input v-model="keywordModel" class="search" type="search" placeholder="筛选文件或文件夹" />
-      <form class="global-search" @submit.prevent="$emit('start-global-search')">
+      <form v-if="globalSearchOpen" class="global-search" @submit.prevent="$emit('start-global-search')">
         <div class="global-search-row">
           <input
+            ref="globalSearchInputRef"
             v-model="globalSearch.keyword"
             class="search global-search-input"
             type="search"
@@ -40,18 +50,34 @@
           </button>
         </div>
         <div class="global-search-options">
-          <label class="global-search-option">
-            <input v-model="globalSearch.mode" type="radio" value="name" :disabled="globalSearch.running" />
-            名称
-          </label>
-          <label class="global-search-option">
-            <input v-model="globalSearch.mode" type="radio" value="content" :disabled="globalSearch.running" />
-            内容
-          </label>
-          <label class="global-search-option global-search-subdirs">
-            <input v-model="globalSearch.includeSubdirectories" type="checkbox" :disabled="globalSearch.running" />
+          <div class="global-search-mode" role="group" aria-label="全局搜索模式">
+            <button
+              type="button"
+              :class="['global-search-mode-button', { active: globalSearch.mode === 'name' }]"
+              :disabled="globalSearch.running"
+              @click="globalSearch.mode = 'name'"
+            >
+              名称
+            </button>
+            <button
+              type="button"
+              :class="['global-search-mode-button', { active: globalSearch.mode === 'content' }]"
+              :disabled="globalSearch.running"
+              @click="globalSearch.mode = 'content'"
+            >
+              内容
+            </button>
+          </div>
+          <button
+            type="button"
+            :class="['global-search-toggle', { active: globalSearch.includeSubdirectories }]"
+            :disabled="globalSearch.running"
+            :aria-pressed="globalSearch.includeSubdirectories"
+            @click="globalSearch.includeSubdirectories = !globalSearch.includeSubdirectories"
+          >
+            <span class="global-search-switch" aria-hidden="true"></span>
             子目录
-          </label>
+          </button>
           <button
             class="global-search-clear"
             type="button"
@@ -155,6 +181,8 @@ const keywordModel = computed({
 });
 const canStartGlobalSearch = computed(() => props.hasCurrentDirectory && props.globalSearch.keyword.trim().length > 0);
 
+const globalSearchOpen = ref(false);
+const globalSearchInputRef = ref<HTMLInputElement | null>(null);
 const entryRefs = ref<Record<string, HTMLElement>>({});
 const fileListRef = ref<HTMLElement | null>(null);
 const scrollPositions = new Map<string, number>();
@@ -175,6 +203,14 @@ function iconForResult(result: GlobalSearchResult): ReaderIconName {
 
 function metaForResult(result: GlobalSearchResult): string {
   return result.kind === "directory" ? "目录" : "文件";
+}
+
+function toggleGlobalSearch(): void {
+  globalSearchOpen.value = !globalSearchOpen.value;
+  if (!globalSearchOpen.value) return;
+  nextTick(() => {
+    globalSearchInputRef.value?.focus();
+  });
 }
 
 /**
