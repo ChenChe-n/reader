@@ -43,6 +43,7 @@
         :key="`${item.kind}:${item.name}`"
         type="button"
         :title="item.name"
+        :ref="element => setEntryRef(item.name, element)"
         :class="['entry', item.kind === 'directory' ? 'folder' : 'file', { active: selectedName === item.name }]"
         @click="$emit('open-entry', item)"
       >
@@ -55,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, nextTick, onBeforeUpdate, ref, watch } from "vue";
 import type { LocalEntry } from "../types";
 import { iconFor, metaFor } from "../utils/fileKind";
 import IconView from "./IconView.vue";
@@ -84,5 +85,35 @@ const emit = defineEmits<{
 const keywordModel = computed({
   get: () => props.keyword,
   set: value => emit("update:keyword", value)
+});
+
+const entryRefs = ref<Record<string, HTMLElement>>({});
+
+/**
+ * 记录文件列表项元素，用于选中项自动滚动。
+ * @param name 条目名称。
+ * @param element 条目 DOM 或组件实例。
+ * @returns 无返回值。
+ */
+function setEntryRef(name: string, element: Element | unknown): void {
+  if (element instanceof HTMLElement) entryRefs.value[name] = element;
+}
+
+/**
+ * 将当前选中的文件滚动到侧栏可视区域内。
+ * @returns 异步完成信号。
+ */
+async function scrollSelectedEntryIntoView(): Promise<void> {
+  await nextTick();
+  if (!props.selectedName) return;
+  entryRefs.value[props.selectedName]?.scrollIntoView({ block: "nearest" });
+}
+
+onBeforeUpdate(() => {
+  entryRefs.value = {};
+});
+
+watch(() => props.selectedName, () => {
+  void scrollSelectedEntryIntoView();
 });
 </script>

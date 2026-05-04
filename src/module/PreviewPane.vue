@@ -70,6 +70,28 @@
       <LineTextEditor ref="lineEditorRef" v-model="draftText" :line-mode="editLineMode" />
     </div>
 
+    <div v-if="showImagePager" class="image-pager" aria-label="图片翻页">
+      <button
+        class="image-pager-button image-pager-prev"
+        type="button"
+        title="上一张（← / Backspace）"
+        :disabled="!canOpenPreviousImage"
+        @click="$emit('previous-image')"
+      >
+        <IconView name="ico-prev" />
+      </button>
+      <div class="image-pager-count">{{ imagePosition }} / {{ imageCount }}</div>
+      <button
+        class="image-pager-button image-pager-next"
+        type="button"
+        title="下一张（→ / Space）"
+        :disabled="!canOpenNextImage"
+        @click="$emit('next-image')"
+      >
+        <IconView name="ico-next" />
+      </button>
+    </div>
+
     <div class="preview-corner-actions">
       <button class="svg-action preview-scroll-action" type="button" title="返回顶部" aria-label="返回顶部" @click="scrollToTop">
         <IconView name="ico-up" />
@@ -127,6 +149,10 @@ const props = defineProps<{
   htmlPreviewMode: "web" | "code";
   previewEditing: boolean;
   isPreviewMaximized: boolean;
+  imagePosition: number;
+  imageCount: number;
+  canOpenPreviousImage: boolean;
+  canOpenNextImage: boolean;
   rootHandle: FileSystemDirectoryHandleLike | null;
   basePathParts: string[];
   createObjectUrl: (file: Blob) => string;
@@ -141,6 +167,8 @@ const emit = defineEmits<{
   "toggle-fullscreen": [];
   "toggle-edit": [];
   "toggle-html-preview": [];
+  "previous-image": [];
+  "next-image": [];
   "open-relative": [href: string];
 }>();
 
@@ -154,6 +182,9 @@ const editToggleTip = computed(() => (props.previewEditing ? "关闭编辑" : "�
 const htmlPreviewToggleTip = computed(() => (props.htmlPreviewMode === "web" ? "代码预览" : "网页预览"));
 const readTimingLabel = computed(() => formatDuration(props.previewTiming.readMs));
 const processTimingLabel = computed(() => formatDuration(props.previewTiming.processMs));
+const showImagePager = computed(
+  () => !props.previewEditing && props.preview.kind === "media" && props.preview.mediaKind === "image" && props.imageCount > 1
+);
 
 /**
  * 滚动预览区域到顶部。

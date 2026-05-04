@@ -43,6 +43,10 @@
         :html-preview-mode="htmlPreviewMode"
         :preview-editing="previewEditing"
         :is-preview-maximized="previewMaximized"
+        :image-position="imagePosition"
+        :image-count="imageCount"
+        :can-open-previous-image="canOpenPreviousImage"
+        :can-open-next-image="canOpenNextImage"
         :root-handle="rootHandle"
         :base-path-parts="currentFileDirectoryPath"
         :create-object-url="createObjectUrl"
@@ -52,6 +56,8 @@
         @save="saveDraft"
         @toggle-edit="togglePreviewEdit"
         @toggle-html-preview="toggleHtmlPreviewMode"
+        @previous-image="openPreviousImage"
+        @next-image="openNextImage"
         @expand="sidebarCollapsed = false"
         @toggle-fullscreen="previewMaximized = !previewMaximized"
         @open-relative="openRelative"
@@ -77,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useReader } from "./module/useReader";
 import { useResponsiveLayout } from "./module/useResponsiveLayout";
 import { useThemeState } from "./theme/themeState";
@@ -106,6 +112,10 @@ const {
   canEditPreview,
   canToggleHtmlPreview,
   canSave,
+  imageCount,
+  imagePosition,
+  canOpenPreviousImage,
+  canOpenNextImage,
   editLineMode,
   htmlPreviewMode,
   currentHandle,
@@ -128,6 +138,8 @@ const {
   saveDraft,
   togglePreviewEdit,
   toggleHtmlPreviewMode,
+  openPreviousImage,
+  openNextImage,
   createObjectUrl,
   resolveConfirmDialog
 } = reader;
@@ -166,7 +178,45 @@ function scrollToDocumentHash(hash: string): void {
   target?.scrollIntoView({ block: "start" });
 }
 
+/**
+ * 处理图片阅读快捷键。
+ * @param event 键盘事件。
+ * @returns 无返回值。
+ */
+function handleReaderKeydown(event: KeyboardEvent): void {
+  if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey || previewEditing.value) return;
+  if (isEditableTarget(event.target)) return;
+  if (event.key === "ArrowRight" || event.key === " ") {
+    if (!canOpenNextImage.value) return;
+    event.preventDefault();
+    void openNextImage();
+    return;
+  }
+  if (event.key === "ArrowLeft" || event.key === "Backspace") {
+    if (!canOpenPreviousImage.value) return;
+    event.preventDefault();
+    void openPreviousImage();
+  }
+}
+
+/**
+ * 判断事件目标是否为可编辑区域。
+ * @param target 事件目标。
+ * @returns 是否应跳过全局快捷键。
+ */
+function isEditableTarget(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null;
+  if (!element) return false;
+  const tagName = element.tagName.toLowerCase();
+  return tagName === "input" || tagName === "textarea" || tagName === "select" || element.isContentEditable;
+}
+
 onMounted(() => {
   void restoreLastSession();
+  window.addEventListener("keydown", handleReaderKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("keydown", handleReaderKeydown);
 });
 </script>

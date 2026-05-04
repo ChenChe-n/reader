@@ -142,7 +142,9 @@ export type ReaderIconName =
   | "ico-save"
   | "ico-edit"
   | "ico-web"
-  | "ico-code";
+  | "ico-code"
+  | "ico-prev"
+  | "ico-next";
 
 declare global {
   interface Window {

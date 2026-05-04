@@ -8,6 +8,7 @@ import type {
   PreviewState,
   TextPreviewWorkerMode
 } from "../types";
+import { extensionOf, isImageExtension } from "../utils/fileKind";
 import { createObjectUrlStore } from "../utils/objectUrls";
 import { initialPreview, noticePreview } from "../utils/previewFactory";
 import { createFilePreviewActions } from "./reader/filePreview";
@@ -53,6 +54,18 @@ export function useReader() {
   const preview = reactive(initialPreview());
   const pathLabel = computed(() => (stack.value.length ? `${stack.value.join("/")}/` : "未选择目录"));
   const filteredEntries = computed(() => filterEntries(entries.value, searchKeyword.value));
+  const imageEntries = computed(() =>
+    entries.value.filter(item => item.kind === "file" && isImageExtension(extensionOf(item.name)))
+  );
+  const currentImageIndex = computed(() =>
+    preview.kind === "media" && preview.mediaKind === "image"
+      ? imageEntries.value.findIndex(item => item.name === selectedName.value)
+      : -1
+  );
+  const imageCount = computed(() => imageEntries.value.length);
+  const imagePosition = computed(() => (currentImageIndex.value >= 0 ? currentImageIndex.value + 1 : 0));
+  const canOpenPreviousImage = computed(() => currentImageIndex.value > 0);
+  const canOpenNextImage = computed(() => currentImageIndex.value >= 0 && currentImageIndex.value < imageEntries.value.length - 1);
 
   const viewContext = {
     currentFile,
@@ -291,6 +304,18 @@ export function useReader() {
   }
 
   /**
+   * 打开当前目录中的相邻图片。
+   * @param offset 相邻偏移，-1 表示上一张，1 表示下一张。
+   * @returns 异步完成信号。
+   */
+  async function openSiblingImage(offset: -1 | 1): Promise<void> {
+    const next = imageEntries.value[currentImageIndex.value + offset];
+    if (!next || next.kind !== "file") return;
+    selectedName.value = next.name;
+    await openFileAndRemember(next.name, next.handle as FileSystemFileHandleLike);
+  }
+
+  /**
    * 恢复 HTML 预览模式配置。
    * @returns 异步完成信号。
    */
@@ -302,6 +327,10 @@ export function useReader() {
     entries,
     currentHandle,
     filteredEntries,
+    imageCount,
+    imagePosition,
+    canOpenPreviousImage,
+    canOpenNextImage,
     selectedName,
     searchKeyword,
     currentFile,
@@ -333,6 +362,8 @@ export function useReader() {
     saveDraft,
     togglePreviewEdit,
     toggleHtmlPreviewMode,
+    openPreviousImage: () => openSiblingImage(-1),
+    openNextImage: () => openSiblingImage(1),
     createObjectUrl: urlStore.create,
     resolveConfirmDialog
   };
