@@ -53,7 +53,7 @@
         :src="preview.url"
         :title="preview.fileName || '文档预览'"
       ></iframe>
-      <div v-else-if="preview.kind === 'media'" class="media-stage">
+      <div v-else-if="preview.kind === 'media'" :class="['media-stage', imageDisplayClass]">
         <img v-if="preview.mediaKind === 'image'" :src="preview.url" :alt="preview.fileName" />
         <video v-else-if="preview.mediaKind === 'video'" :src="preview.url" controls playsinline></video>
         <audio v-else :src="preview.url" controls></audio>
@@ -89,6 +89,19 @@
         @click="$emit('next-image')"
       >
         <IconView name="ico-next" />
+      </button>
+    </div>
+
+    <div v-if="showImageTools" class="image-mode-switch" role="group" aria-label="图片显示模式">
+      <button
+        v-for="option in imageDisplayOptions"
+        :key="option.value"
+        type="button"
+        :class="['image-mode-button', { active: imageDisplayMode === option.value }]"
+        :title="option.title"
+        @click="$emit('set-image-display-mode', option.value)"
+      >
+        {{ option.label }}
       </button>
     </div>
 
@@ -132,6 +145,7 @@ import IconView from "./IconView.vue";
 import LineTextEditor from "./LineTextEditor.vue";
 import LineTextViewer from "./LineTextViewer.vue";
 import SpreadsheetViewer from "./SpreadsheetViewer.vue";
+import type { ImageDisplayMode } from "./reader/types";
 import type { LineMode } from "./reader/workerLineStyles";
 
 const draftText = defineModel<string>("draftText", { required: true });
@@ -147,6 +161,7 @@ const props = defineProps<{
   canEditPreview: boolean;
   canToggleHtmlPreview: boolean;
   htmlPreviewMode: "web" | "code";
+  imageDisplayMode: ImageDisplayMode;
   previewEditing: boolean;
   isPreviewMaximized: boolean;
   imagePosition: number;
@@ -167,6 +182,7 @@ const emit = defineEmits<{
   "toggle-fullscreen": [];
   "toggle-edit": [];
   "toggle-html-preview": [];
+  "set-image-display-mode": [mode: ImageDisplayMode];
   "previous-image": [];
   "next-image": [];
   "open-relative": [href: string];
@@ -182,9 +198,17 @@ const editToggleTip = computed(() => (props.previewEditing ? "关闭编辑" : "�
 const htmlPreviewToggleTip = computed(() => (props.htmlPreviewMode === "web" ? "代码预览" : "网页预览"));
 const readTimingLabel = computed(() => formatDuration(props.previewTiming.readMs));
 const processTimingLabel = computed(() => formatDuration(props.previewTiming.processMs));
+const imageDisplayOptions: Array<{ value: ImageDisplayMode; label: string; title: string }> = [
+  { value: "fit-page", label: "适页", title: "完整显示图片" },
+  { value: "fit-width", label: "适宽", title: "图片宽度适应预览区" },
+  { value: "fit-height", label: "适高", title: "图片高度适应预览区" },
+  { value: "original", label: "原始", title: "按原始尺寸显示图片" }
+];
+const showImageTools = computed(() => !props.previewEditing && props.preview.kind === "media" && props.preview.mediaKind === "image");
 const showImagePager = computed(
-  () => !props.previewEditing && props.preview.kind === "media" && props.preview.mediaKind === "image" && props.imageCount > 1
+  () => showImageTools.value && props.imageCount > 1
 );
+const imageDisplayClass = computed(() => `media-stage-image-${props.imageDisplayMode}`);
 
 /**
  * 滚动预览区域到顶部。

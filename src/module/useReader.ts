@@ -21,10 +21,11 @@ import { createArchiveDirectoryHandle, isArchiveFileName } from "./reader/archiv
 import { createSessionActions } from "./reader/sessionActions";
 import type { LineMode } from "./reader/workerLineStyles";
 import { lineTextPreview } from "./reader/workerLineDocument";
-import type { HtmlPreviewMode } from "./reader/types";
+import type { HtmlPreviewMode, ImageDisplayMode } from "./reader/types";
 
 const urlStore = createObjectUrlStore();
 const HTML_PREVIEW_MODE_KEY = "reader.htmlPreviewMode";
+const IMAGE_DISPLAY_MODE_KEY = "reader.imageDisplayMode";
 
 /**
  * 提供阅读器页面的核心状态和动作。
@@ -43,6 +44,7 @@ export function useReader() {
   const lastWorkerMode = ref<TextPreviewWorkerMode | null>(null);
   const previewEditing = ref(false);
   const htmlPreviewMode = ref<HtmlPreviewMode>("web");
+  const imageDisplayMode = ref<ImageDisplayMode>("fit-page");
   const draftText = ref("");
   const currentFileDirectoryPath = ref<string[]>([]);
   const searchKeyword = ref("");
@@ -145,6 +147,7 @@ export function useReader() {
 
   onMounted(() => {
     void restoreHtmlPreviewMode();
+    void restoreImageDisplayMode();
   });
 
   /**
@@ -304,6 +307,16 @@ export function useReader() {
   }
 
   /**
+   * 设置图片显示模式并写入本地配置。
+   * @param mode 图片显示模式。
+   * @returns 无返回值。
+   */
+  function setImageDisplayMode(mode: ImageDisplayMode): void {
+    imageDisplayMode.value = mode;
+    void writeImageDisplayMode(mode);
+  }
+
+  /**
    * 打开当前目录中的相邻图片。
    * @param offset 相邻偏移，-1 表示上一张，1 表示下一张。
    * @returns 异步完成信号。
@@ -321,6 +334,14 @@ export function useReader() {
    */
   async function restoreHtmlPreviewMode(): Promise<void> {
     htmlPreviewMode.value = await readHtmlPreviewMode();
+  }
+
+  /**
+   * 恢复图片显示模式配置。
+   * @returns 异步完成信号。
+   */
+  async function restoreImageDisplayMode(): Promise<void> {
+    imageDisplayMode.value = await readImageDisplayMode();
   }
 
   return {
@@ -342,6 +363,7 @@ export function useReader() {
     canSave,
     editLineMode,
     htmlPreviewMode,
+    imageDisplayMode,
     preview,
     fileTitle,
     fileMeta,
@@ -362,6 +384,7 @@ export function useReader() {
     saveDraft,
     togglePreviewEdit,
     toggleHtmlPreviewMode,
+    setImageDisplayMode,
     openPreviousImage: () => openSiblingImage(-1),
     openNextImage: () => openSiblingImage(1),
     createObjectUrl: urlStore.create,
@@ -383,6 +406,27 @@ async function writeHtmlPreviewMode(mode: HtmlPreviewMode): Promise<void> {
   } catch {
     // Ignore storage failures; the current session still switches correctly.
   }
+}
+
+async function readImageDisplayMode(): Promise<ImageDisplayMode> {
+  try {
+    const mode = await readConfigValue<ImageDisplayMode>(IMAGE_DISPLAY_MODE_KEY);
+    return isImageDisplayMode(mode) ? mode : "fit-page";
+  } catch {
+    return "fit-page";
+  }
+}
+
+async function writeImageDisplayMode(mode: ImageDisplayMode): Promise<void> {
+  try {
+    await writeConfigValue<ImageDisplayMode>(IMAGE_DISPLAY_MODE_KEY, mode);
+  } catch {
+    // Ignore storage failures; the current session still switches correctly.
+  }
+}
+
+function isImageDisplayMode(value: unknown): value is ImageDisplayMode {
+  return value === "fit-page" || value === "fit-width" || value === "fit-height" || value === "original";
 }
 
 /**

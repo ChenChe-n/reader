@@ -8,6 +8,7 @@ import type {
 } from "../../types";
 
 export type HtmlPreviewMode = "web" | "code";
+export type ImageDisplayMode = "fit-page" | "fit-width" | "fit-height" | "original";
 
 export interface UrlStore {
   create(file: Blob): string;

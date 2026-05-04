@@ -41,6 +41,7 @@
         :can-edit-preview="canEditPreview"
         :can-toggle-html-preview="canToggleHtmlPreview"
         :html-preview-mode="htmlPreviewMode"
+        :image-display-mode="imageDisplayMode"
         :preview-editing="previewEditing"
         :is-preview-maximized="previewMaximized"
         :image-position="imagePosition"
@@ -56,6 +57,7 @@
         @save="saveDraft"
         @toggle-edit="togglePreviewEdit"
         @toggle-html-preview="toggleHtmlPreviewMode"
+        @set-image-display-mode="setImageDisplayMode"
         @previous-image="openPreviousImage"
         @next-image="openNextImage"
         @expand="sidebarCollapsed = false"
@@ -118,6 +120,7 @@ const {
   canOpenNextImage,
   editLineMode,
   htmlPreviewMode,
+  imageDisplayMode,
   currentHandle,
   currentFileDirectoryPath,
   preview,
@@ -138,6 +141,7 @@ const {
   saveDraft,
   togglePreviewEdit,
   toggleHtmlPreviewMode,
+  setImageDisplayMode,
   openPreviousImage,
   openNextImage,
   createObjectUrl,
