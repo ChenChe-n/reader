@@ -69,6 +69,7 @@
       ref="contentRef"
       :class="['content', { 'content-frame': preview.kind === 'html' || preview.kind === 'document' }]"
       @click="handleContentClick"
+      @scroll="handlePreviewScroll"
     >
       <div v-if="preview.kind === 'notice'" class="notice">{{ preview.message }}</div>
       <article v-else-if="preview.kind === 'markdown'" ref="markdownRef" class="markdown" v-html="preview.html"></article>
@@ -215,6 +216,7 @@ const props = defineProps<{
   createObjectUrl: (file: Blob) => string;
   editLineMode: LineMode;
   jumpLineRequest: { line: number; token: number };
+  previewScrollKey: string;
 }>();
 
 const emit = defineEmits<{
@@ -241,6 +243,7 @@ const searchPanelOpen = ref(false);
 const searchKeyword = ref("");
 const activeSearchIndex = ref(-1);
 const lineJumpInput = ref("");
+const previewScrollPositions = new Map<string, number>();
 const iframeSandbox = "allow-forms allow-popups allow-scripts allow-modals allow-same-origin";
 const fullscreenTip = computed(() => (props.isPreviewMaximized ? "还原预览" : "最大化预览"));
 const editToggleTip = computed(() => (props.previewEditing ? "关闭编辑" : "编辑"));
@@ -301,6 +304,48 @@ function scrollToTop(): void {
     return;
   }
   contentRef.value?.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function rememberCurrentPreviewScroll(key = activePreviewScrollKey()): void {
+  if (!key) return;
+  previewScrollPositions.set(key, currentPreviewScrollTop());
+}
+
+function handlePreviewScroll(): void {
+  rememberCurrentPreviewScroll();
+}
+
+async function restorePreviewScroll(key = activePreviewScrollKey()): Promise<void> {
+  await nextTick();
+  await nextTick();
+  const top = previewScrollPositions.get(key) ?? 0;
+  setPreviewScrollTop(top);
+}
+
+function activePreviewScrollKey(): string {
+  return `${props.previewEditing ? "edit" : "view"}:${props.previewScrollKey}`;
+}
+
+function currentPreviewScrollTop(): number {
+  return previewScrollTopFor(props.previewEditing, props.preview.kind);
+}
+
+function previewScrollTopFor(editing: boolean, previewKind: PreviewState["kind"]): number {
+  if (editing) return lineEditorRef.value?.scrollTop() ?? 0;
+  if (previewKind === "lineText") return lineViewerRef.value?.scrollTop() ?? 0;
+  return contentRef.value?.scrollTop ?? 0;
+}
+
+function setPreviewScrollTop(top: number): void {
+  if (props.previewEditing) {
+    lineEditorRef.value?.setScrollTop(top);
+    return;
+  }
+  if (props.preview.kind === "lineText") {
+    lineViewerRef.value?.setScrollTop(top);
+    return;
+  }
+  if (contentRef.value) contentRef.value.scrollTop = top;
 }
 
 function openSearchPanel(): void {
@@ -517,9 +562,20 @@ watch(
 );
 
 watch(
+  () => [props.previewScrollKey, props.previewEditing, props.preview.kind] as const,
+  async ([nextKey, nextEditing], [oldKey, oldEditing, oldKind]) => {
+    if (oldKey) previewScrollPositions.set(`${oldEditing ? "edit" : "view"}:${oldKey}`, previewScrollTopFor(oldEditing, oldKind));
+    await restorePreviewScroll(`${nextEditing ? "edit" : "view"}:${nextKey}`);
+  },
+  { flush: "pre" }
+);
+
+watch(
   () => props.jumpLineRequest.token,
   async () => {
     if (!props.jumpLineRequest.line) return;
+    await nextTick();
+    await nextTick();
     await nextTick();
     scrollToLine(props.jumpLineRequest.line);
   }

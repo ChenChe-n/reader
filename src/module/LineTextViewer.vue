@@ -318,11 +318,19 @@ function scrollToTop(): void {
   resetScroll();
 }
 
+function scrollTop(): number {
+  return scrollYPx.value;
+}
+
+function setScrollTop(top: number): void {
+  scrollYFixed.value = clampBig(toFixed(Math.max(0, top)), maxScrollYFixed.value);
+}
+
 function scrollToLine(lineNumber: number): void {
   const index = Math.max(0, Math.min(Math.trunc(lineNumber) - 1, props.document.lineCount - 1));
   const top = prefixSum.value[index] ?? 0;
   scrollYFixed.value = clampBig(toFixed(top), maxScrollYFixed.value);
 }
 
-defineExpose({ scrollToTop, scrollToLine });
+defineExpose({ scrollToTop, scrollToLine, scrollTop, setScrollTop });
 </script>

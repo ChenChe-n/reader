@@ -59,6 +59,7 @@
         :create-object-url="createObjectUrl"
         :edit-line-mode="editLineMode"
         :jump-line-request="{ line: pendingPreviewLineJump, token: pendingPreviewLineJumpToken }"
+        :preview-scroll-key="previewScrollKey"
         @copy="copyCurrentText"
         @download="downloadCurrentFile"
         @save="saveDraft"
@@ -172,6 +173,13 @@ const {
   startResize
 } = useResponsiveLayout();
 const canGoUp = computed(() => Boolean(rootHandle.value && pathLabel.value.split("/").filter(Boolean).length > 1));
+const previewScrollKey = computed(() => {
+  if (currentFile.value) {
+    const path = [...currentFileDirectoryPath.value, currentFile.value.name].join("/");
+    return `${preview.kind}:${path}`;
+  }
+  return `${preview.kind}:${fileTitle.value}`;
+});
 
 /**
  * 打开相对文件并按 hash 滚动。
