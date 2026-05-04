@@ -30,7 +30,7 @@
       <span>{{ pathLabel }}</span>
     </div>
 
-    <div class="file-list">
+    <div ref="fileListRef" class="file-list" @scroll="rememberCurrentScroll">
       <div v-if="!hasCurrentDirectory" class="empty">
         <div class="empty-inner"><p>请选择一个文件夹</p></div>
       </div>
@@ -88,6 +88,8 @@ const keywordModel = computed({
 });
 
 const entryRefs = ref<Record<string, HTMLElement>>({});
+const fileListRef = ref<HTMLElement | null>(null);
+const scrollPositions = new Map<string, number>();
 
 /**
  * 记录文件列表项元素，用于选中项自动滚动。
@@ -109,11 +111,36 @@ async function scrollSelectedEntryIntoView(): Promise<void> {
   entryRefs.value[props.selectedName]?.scrollIntoView({ block: "nearest" });
 }
 
+/**
+ * 记录当前目录列表滚动位置。
+ * @returns 无返回值。
+ */
+function rememberCurrentScroll(): void {
+  if (!fileListRef.value) return;
+  scrollPositions.set(props.pathLabel, fileListRef.value.scrollTop);
+}
+
+/**
+ * 恢复指定目录的列表滚动位置。
+ * @param path 目录路径标签。
+ * @returns 异步完成信号。
+ */
+async function restoreDirectoryScroll(path: string): Promise<void> {
+  await nextTick();
+  if (!fileListRef.value) return;
+  fileListRef.value.scrollTop = scrollPositions.get(path) ?? 0;
+}
+
 onBeforeUpdate(() => {
   entryRefs.value = {};
 });
 
 watch(() => props.selectedName, () => {
   void scrollSelectedEntryIntoView();
+});
+
+watch(() => props.pathLabel, (path, oldPath) => {
+  if (oldPath && fileListRef.value) scrollPositions.set(oldPath, fileListRef.value.scrollTop);
+  void restoreDirectoryScroll(path);
 });
 </script>
