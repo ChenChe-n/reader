@@ -214,6 +214,7 @@ const props = defineProps<{
   basePathParts: string[];
   createObjectUrl: (file: Blob) => string;
   editLineMode: LineMode;
+  jumpLineRequest: { line: number; token: number };
 }>();
 
 const emit = defineEmits<{
@@ -512,6 +513,15 @@ watch(
     searchKeyword.value = "";
     activeSearchIndex.value = -1;
     lineJumpInput.value = "";
+  }
+);
+
+watch(
+  () => props.jumpLineRequest.token,
+  async () => {
+    if (!props.jumpLineRequest.line) return;
+    await nextTick();
+    scrollToLine(props.jumpLineRequest.line);
   }
 );
 

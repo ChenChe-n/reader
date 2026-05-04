@@ -4,6 +4,7 @@ import { readConfigValue, writeConfigValue } from "../api/readerConfig";
 import type {
   FileSystemDirectoryHandleLike,
   FileSystemFileHandleLike,
+  GlobalSearchResult,
   LocalEntry,
   PreviewState,
   TextPreviewWorkerMode
@@ -19,6 +20,7 @@ import { copyCurrentText, downloadCurrentFile } from "./reader/fileCommands";
 import { createLoadingState } from "./reader/loadingState";
 import { createArchiveDirectoryHandle, isArchiveFileName } from "./reader/archiveHandles";
 import { createSessionActions } from "./reader/sessionActions";
+import { createGlobalSearchActions } from "./reader/globalSearch";
 import type { LineMode } from "./reader/workerLineStyles";
 import { lineTextPreview } from "./reader/workerLineDocument";
 import type { HtmlPreviewMode, ImageDisplayMode } from "./reader/types";
@@ -55,6 +57,8 @@ export function useReader() {
   const imageDisplayMode = ref<ImageDisplayMode>("fit-page");
   const draftText = ref("");
   const currentFileDirectoryPath = ref<string[]>([]);
+  const pendingPreviewLineJump = ref(0);
+  const pendingPreviewLineJumpToken = ref(0);
   const searchKeyword = ref("");
   const fileTitle = ref("未打开文件");
   const fileMeta = ref("支持 文本、PDF、Office、PSD、图片、音频和视频");
@@ -133,6 +137,11 @@ export function useReader() {
           draftText.value !== currentText.value
       )
   );
+  const { globalSearch, startGlobalSearch, cancelGlobalSearch, clearGlobalSearch } = createGlobalSearchActions({
+    currentHandle,
+    directoryTrail,
+    stack
+  });
 
   watch(currentFile, () => {
     previewEditing.value = false;
@@ -218,6 +227,41 @@ export function useReader() {
       return;
     }
     await openFileAndRemember(item.name, item.handle as FileSystemFileHandleLike);
+  }
+
+  /**
+   * 打开全局搜索结果。
+   * @param result 搜索结果。
+   * @returns 异步完成信号。
+   */
+  async function openGlobalSearchResult(result: GlobalSearchResult): Promise<void> {
+    cancelLargeTextConfirm();
+    searchKeyword.value = "";
+    if (result.kind === "directory") {
+      stack.value = [rootHandle.value?.name || stack.value[0] || "本地目录", ...result.pathParts];
+      directoryTrail.value = [...result.directoryTrail, result.handle as FileSystemDirectoryHandleLike];
+      await loadDirectory(result.handle as FileSystemDirectoryHandleLike);
+      selectedName.value = "";
+      showEmpty(`当前目录：${result.name}`, "选择文件进行预览，或继续进入子文件夹。");
+      return;
+    }
+    stack.value = [rootHandle.value?.name || stack.value[0] || "本地目录", ...result.directoryPath];
+    directoryTrail.value = result.directoryTrail;
+    await loadDirectory(result.directoryHandle);
+    selectedName.value = result.name;
+    await openFileAndRemember(result.name, result.handle as FileSystemFileHandleLike);
+    if (result.lineNumber) {
+      if (lastWorkerMode.value === "html") {
+        htmlPreviewMode.value = "code";
+        void writeHtmlPreviewMode("code");
+        const next = lineTextPreview(currentText.value, "html");
+        if (next.kind === "lineText") next.lineText = markRaw(next.lineText);
+        lastWorkerMode.value = "html-code";
+        setPreview(next);
+      }
+      pendingPreviewLineJump.value = result.lineNumber;
+      pendingPreviewLineJumpToken.value += 1;
+    }
   }
 
   /**
@@ -526,6 +570,9 @@ export function useReader() {
     pathLabel,
     rootHandle,
     currentFileDirectoryPath,
+    pendingPreviewLineJump,
+    pendingPreviewLineJumpToken,
+    globalSearch,
     openDirectory,
     loadDirectory,
     openEntry,
@@ -539,6 +586,10 @@ export function useReader() {
     togglePreviewEdit,
     toggleHtmlPreviewMode,
     setImageDisplayMode,
+    startGlobalSearch,
+    cancelGlobalSearch,
+    clearGlobalSearch,
+    openGlobalSearchResult,
     openPreviousImage: () => openSiblingImage(-1),
     openNextImage: () => openSiblingImage(1),
     createObjectUrl: urlStore.create,

@@ -23,6 +23,49 @@
         </button>
       </div>
       <input v-model="keywordModel" class="search" type="search" placeholder="筛选文件或文件夹" />
+      <form class="global-search" @submit.prevent="$emit('start-global-search')">
+        <div class="global-search-row">
+          <input
+            v-model="globalSearch.keyword"
+            class="search global-search-input"
+            type="search"
+            placeholder="全局搜索"
+            :disabled="globalSearch.running || !hasCurrentDirectory"
+          />
+          <button v-if="!globalSearch.running" class="button icon-only" type="submit" title="开始全局搜索" :disabled="!canStartGlobalSearch">
+            <IconView name="file-search" />
+          </button>
+          <button v-else class="button icon-only" type="button" title="取消全局搜索" @click="$emit('cancel-global-search')">
+            <IconView name="ico-panel-close" />
+          </button>
+        </div>
+        <div class="global-search-options">
+          <label class="global-search-option">
+            <input v-model="globalSearch.mode" type="radio" value="name" :disabled="globalSearch.running" />
+            名称
+          </label>
+          <label class="global-search-option">
+            <input v-model="globalSearch.mode" type="radio" value="content" :disabled="globalSearch.running" />
+            内容
+          </label>
+          <label class="global-search-option global-search-subdirs">
+            <input v-model="globalSearch.includeSubdirectories" type="checkbox" :disabled="globalSearch.running" />
+            子目录
+          </label>
+          <button
+            class="global-search-clear"
+            type="button"
+            :disabled="globalSearch.running || !globalSearch.results.length"
+            @click="$emit('clear-global-search')"
+          >
+            清空
+          </button>
+        </div>
+        <div v-if="globalSearch.status" class="global-search-status">
+          <span>{{ globalSearch.status }}</span>
+          <span v-if="globalSearch.mode === 'content'">已查 {{ globalSearch.searchedFiles }} 文件，跳过 {{ globalSearch.skippedFiles }}</span>
+        </div>
+      </form>
     </div>
 
     <div class="crumbs">
@@ -30,7 +73,26 @@
       <span>{{ pathLabel }}</span>
     </div>
 
-    <div ref="fileListRef" class="file-list" @scroll="rememberCurrentScroll">
+    <div v-if="globalSearch.results.length" class="global-results">
+      <button
+        v-for="result in globalSearch.results"
+        :key="result.id"
+        type="button"
+        class="global-result"
+        :title="result.pathParts.join('/')"
+        @click="$emit('open-global-result', result)"
+      >
+        <span class="icon"><IconView :name="iconForResult(result)" /></span>
+        <span class="global-result-main">
+          <span class="global-result-name">{{ result.name }}</span>
+          <span class="global-result-path">{{ result.pathParts.join("/") }}</span>
+          <span v-if="result.snippet" class="global-result-snippet">{{ result.snippet }}</span>
+        </span>
+        <span class="global-result-meta">{{ result.lineNumber ? `L${result.lineNumber}` : metaForResult(result) }}</span>
+      </button>
+    </div>
+
+    <div v-else ref="fileListRef" class="file-list" @scroll="rememberCurrentScroll">
       <div v-if="!hasCurrentDirectory" class="empty">
         <div class="empty-inner"><p>请选择一个文件夹</p></div>
       </div>
@@ -57,8 +119,8 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUpdate, ref, watch } from "vue";
-import type { LocalEntry } from "../types";
-import { iconFor, metaFor } from "../utils/fileKind";
+import type { GlobalSearchResult, GlobalSearchState, LocalEntry, ReaderIconName } from "../types";
+import { extensionOf, iconFor, iconForExtension, metaFor } from "../utils/fileKind";
 import IconView from "./IconView.vue";
 
 const props = defineProps<{
@@ -69,12 +131,17 @@ const props = defineProps<{
   hasRoot: boolean;
   hasCurrentDirectory: boolean;
   canGoUp: boolean;
+  globalSearch: GlobalSearchState;
 }>();
 
 const emit = defineEmits<{
   "update:keyword": [value: string];
   "open-directory": [];
   "open-entry": [item: LocalEntry];
+  "open-global-result": [result: GlobalSearchResult];
+  "start-global-search": [];
+  "cancel-global-search": [];
+  "clear-global-search": [];
   reload: [];
   home: [];
   theme: [];
@@ -86,6 +153,7 @@ const keywordModel = computed({
   get: () => props.keyword,
   set: value => emit("update:keyword", value)
 });
+const canStartGlobalSearch = computed(() => props.hasCurrentDirectory && props.globalSearch.keyword.trim().length > 0);
 
 const entryRefs = ref<Record<string, HTMLElement>>({});
 const fileListRef = ref<HTMLElement | null>(null);
@@ -99,6 +167,14 @@ const scrollPositions = new Map<string, number>();
  */
 function setEntryRef(name: string, element: Element | unknown): void {
   if (element instanceof HTMLElement) entryRefs.value[name] = element;
+}
+
+function iconForResult(result: GlobalSearchResult): ReaderIconName {
+  return result.kind === "directory" ? "dir-default" : iconForExtension(extensionOf(result.name));
+}
+
+function metaForResult(result: GlobalSearchResult): string {
+  return result.kind === "directory" ? "目录" : "文件";
 }
 
 /**

@@ -10,8 +10,13 @@
         :has-root="Boolean(rootHandle)"
         :has-current-directory="Boolean(currentHandle)"
         :can-go-up="canGoUp"
+        :global-search="globalSearch"
         @open-directory="openDirectory"
         @open-entry="openEntry"
+        @open-global-result="openGlobalSearchResult"
+        @start-global-search="startGlobalSearch"
+        @cancel-global-search="cancelGlobalSearch"
+        @clear-global-search="clearGlobalSearch"
         @reload="loadDirectory(currentHandle)"
         @home="goHome"
         @go-up="goUp"
@@ -53,6 +58,7 @@
         :base-path-parts="currentFileDirectoryPath"
         :create-object-url="createObjectUrl"
         :edit-line-mode="editLineMode"
+        :jump-line-request="{ line: pendingPreviewLineJump, token: pendingPreviewLineJumpToken }"
         @copy="copyCurrentText"
         @download="downloadCurrentFile"
         @save="saveDraft"
@@ -124,6 +130,9 @@ const {
   imageDisplayMode,
   currentHandle,
   currentFileDirectoryPath,
+  pendingPreviewLineJump,
+  pendingPreviewLineJumpToken,
+  globalSearch,
   preview,
   fileTitle,
   fileMeta,
@@ -143,6 +152,10 @@ const {
   togglePreviewEdit,
   toggleHtmlPreviewMode,
   setImageDisplayMode,
+  startGlobalSearch,
+  cancelGlobalSearch,
+  clearGlobalSearch,
+  openGlobalSearchResult,
   openPreviousImage,
   openNextImage,
   createObjectUrl,

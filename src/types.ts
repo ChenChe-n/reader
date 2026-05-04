@@ -47,6 +47,34 @@ export interface LocalEntry {
   handle: LocalHandle;
 }
 
+export type GlobalSearchMode = "name" | "content";
+
+export interface GlobalSearchResult {
+  id: string;
+  mode: GlobalSearchMode;
+  name: string;
+  kind: EntryKind;
+  pathParts: string[];
+  directoryPath: string[];
+  handle: LocalHandle;
+  directoryHandle: FileSystemDirectoryHandleLike;
+  directoryTrail: FileSystemDirectoryHandleLike[];
+  lineNumber?: number;
+  snippet?: string;
+}
+
+export interface GlobalSearchState {
+  keyword: string;
+  mode: GlobalSearchMode;
+  includeSubdirectories: boolean;
+  running: boolean;
+  searchedFiles: number;
+  searchedDirectories: number;
+  skippedFiles: number;
+  status: string;
+  results: GlobalSearchResult[];
+}
+
 export interface RelativeFileResult {
   file: File;
   handle: FileSystemFileHandleLike;
