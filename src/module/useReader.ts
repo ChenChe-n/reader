@@ -1,4 +1,4 @@
-import { computed, markRaw, onMounted, reactive, ref, watch } from "vue";
+import { computed, markRaw, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { pickDirectory, readDirectory } from "../api/localFiles";
 import { readConfigValue, writeConfigValue } from "../api/readerConfig";
 import type {
@@ -26,6 +26,14 @@ import type { HtmlPreviewMode, ImageDisplayMode } from "./reader/types";
 const urlStore = createObjectUrlStore();
 const HTML_PREVIEW_MODE_KEY = "reader.htmlPreviewMode";
 const IMAGE_DISPLAY_MODE_KEY = "reader.imageDisplayMode";
+
+interface CachedImage {
+  name: string;
+  pathKey: string;
+  handle: FileSystemFileHandleLike;
+  file: File;
+  url: string;
+}
 
 /**
  * 提供阅读器页面的核心状态和动作。
@@ -68,6 +76,8 @@ export function useReader() {
   const imagePosition = computed(() => (currentImageIndex.value >= 0 ? currentImageIndex.value + 1 : 0));
   const canOpenPreviousImage = computed(() => currentImageIndex.value > 0);
   const canOpenNextImage = computed(() => currentImageIndex.value >= 0 && currentImageIndex.value < imageEntries.value.length - 1);
+  const imageWindowCache = new Map<string, CachedImage>();
+  let imageWindowToken = 0;
 
   const viewContext = {
     currentFile,
@@ -85,7 +95,7 @@ export function useReader() {
     urlStore
   };
   const { showEmpty, showNotice } = createViewStateActions({ ...viewContext, loadVersion });
-  const { openFile: openPreviewFile, saveTextAndRefresh } = createFilePreviewActions({
+  const { openFile: openPreviewFile, saveTextAndRefresh, openPreloadedImage } = createFilePreviewActions({
     ...viewContext,
     rootHandle,
     stack,
@@ -129,6 +139,10 @@ export function useReader() {
     draftText.value = "";
   });
 
+  watch([currentImageIndex, imageEntries], () => {
+    void preloadImageWindow();
+  });
+
   const navigation = createNavigationActions({
     rootHandle,
     directoryTrail,
@@ -148,6 +162,10 @@ export function useReader() {
   onMounted(() => {
     void restoreHtmlPreviewMode();
     void restoreImageDisplayMode();
+  });
+
+  onUnmounted(() => {
+    clearImageWindow();
   });
 
   /**
@@ -176,6 +194,7 @@ export function useReader() {
    */
   async function loadDirectory(handle: FileSystemDirectoryHandleLike | null): Promise<void> {
     if (!handle) return;
+    clearImageWindow();
     entries.value = await readDirectory(handle);
     currentHandle.value = handle;
   }
@@ -325,7 +344,142 @@ export function useReader() {
     const next = imageEntries.value[currentImageIndex.value + offset];
     if (!next || next.kind !== "file") return;
     selectedName.value = next.name;
+    if (useCachedImage(next)) {
+      rememberSession(next.name);
+      void preloadImageWindow();
+      return;
+    }
     await openFileAndRemember(next.name, next.handle as FileSystemFileHandleLike);
+  }
+
+  /**
+   * 使用图片窗口中的缓存图片。
+   * @param entry 目标图片条目。
+   * @returns 是否命中窗口缓存。
+   */
+  function useCachedImage(entry: LocalEntry): boolean {
+    const cached = imageWindowCache.get(imageCacheKey(currentPathKey(), entry.name));
+    if (!cached || !isSameCacheTarget(cached, entry)) return false;
+    openPreloadedImage(cached.file, cached.handle, cached.url);
+    return true;
+  }
+
+  /**
+   * 后台维护上一张、当前张、下一张图片窗口。
+   * @returns 异步完成信号。
+   */
+  async function preloadImageWindow(): Promise<void> {
+    if (currentImageIndex.value < 0) {
+      clearImageWindow();
+      return;
+    }
+    const pathKey = currentPathKey();
+    const targets = imageWindowEntries();
+    if (!targets.length) {
+      clearImageWindow();
+      return;
+    }
+    const token = ++imageWindowToken;
+    const targetKeys = new Set(targets.map(item => imageCacheKey(pathKey, item.name)));
+    pruneImageWindow(targetKeys);
+    await Promise.all(targets.map(item => ensureCachedImage(item, pathKey, token)));
+  }
+
+  /**
+   * 获取当前窗口内的图片条目。
+   * @returns 窗口图片条目。
+   */
+  function imageWindowEntries(): LocalEntry[] {
+    return [currentImageIndex.value - 1, currentImageIndex.value, currentImageIndex.value + 1]
+      .map(index => imageEntries.value[index])
+      .filter((item): item is LocalEntry => Boolean(item && item.kind === "file"));
+  }
+
+  /**
+   * 确保指定图片已进入窗口缓存。
+   * @param target 目标图片条目。
+   * @param pathKey 当前目录路径标识。
+   * @param token 当前窗口任务令牌。
+   * @returns 异步完成信号。
+   */
+  async function ensureCachedImage(target: LocalEntry, pathKey: string, token: number): Promise<void> {
+    const key = imageCacheKey(pathKey, target.name);
+    const existing = imageWindowCache.get(key);
+    if (existing && isSameCacheTarget(existing, target)) return;
+    if (existing) {
+      URL.revokeObjectURL(existing.url);
+      imageWindowCache.delete(key);
+    }
+    const handle = target.handle as FileSystemFileHandleLike;
+    try {
+      const file = await handle.getFile();
+      if (token !== imageWindowToken || pathKey !== currentPathKey()) return;
+      const url = URL.createObjectURL(file);
+      try {
+        await decodeImageUrl(url);
+      } catch {
+        URL.revokeObjectURL(url);
+        return;
+      }
+      if (token !== imageWindowToken || pathKey !== currentPathKey()) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+      imageWindowCache.set(key, { name: target.name, pathKey, handle, file, url });
+    } catch {
+      // 窗口缓存失败不影响当前阅读；真正打开时仍走正常加载流程。
+    }
+  }
+
+  /**
+   * 清理整个图片窗口缓存。
+   * @returns 无返回值。
+   */
+  function clearImageWindow(): void {
+    imageWindowToken += 1;
+    for (const cached of imageWindowCache.values()) URL.revokeObjectURL(cached.url);
+    imageWindowCache.clear();
+  }
+
+  /**
+   * 裁剪图片窗口缓存。
+   * @param targetKeys 需要保留的缓存键。
+   * @returns 无返回值。
+   */
+  function pruneImageWindow(targetKeys: Set<string>): void {
+    for (const [key, cached] of imageWindowCache) {
+      if (targetKeys.has(key)) continue;
+      URL.revokeObjectURL(cached.url);
+      imageWindowCache.delete(key);
+    }
+  }
+
+  /**
+   * 判断缓存是否对应当前目录下的目标图片。
+   * @param cached 已缓存图片。
+   * @param entry 目标条目。
+   * @returns 是否同一目标。
+   */
+  function isSameCacheTarget(cached: CachedImage, entry: LocalEntry): boolean {
+    return cached.pathKey === currentPathKey() && cached.name === entry.name && cached.handle === entry.handle;
+  }
+
+  /**
+   * 当前目录路径标识。
+   * @returns 路径标识。
+   */
+  function currentPathKey(): string {
+    return stack.value.join("\0");
+  }
+
+  /**
+   * 生成图片窗口缓存键。
+   * @param pathKey 目录路径标识。
+   * @param name 文件名。
+   * @returns 缓存键。
+   */
+  function imageCacheKey(pathKey: string, name: string): string {
+    return `${pathKey}\0${name}`;
   }
 
   /**
@@ -427,6 +581,19 @@ async function writeImageDisplayMode(mode: ImageDisplayMode): Promise<void> {
 
 function isImageDisplayMode(value: unknown): value is ImageDisplayMode {
   return value === "fit-page" || value === "fit-width" || value === "fit-height" || value === "original";
+}
+
+async function decodeImageUrl(url: string): Promise<void> {
+  const image = new Image();
+  image.src = url;
+  if (image.decode) {
+    await image.decode();
+    return;
+  }
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("图片解码失败"));
+  });
 }
 
 /**

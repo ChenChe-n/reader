@@ -60,6 +60,24 @@ export function createFilePreviewActions(context: FilePreviewContext) {
   }
 
   /**
+   * 使用图片窗口缓存中已经解码过的图片构建预览。
+   * @param file 当前图片文件。
+   * @param fileHandle 文件句柄。
+   * @param url 已创建的 object URL。
+   * @returns 无返回值。
+   */
+  function openPreloadedImage(file: File, fileHandle: FileSystemFileHandleLike, url: string): void {
+    context.loadAbortController.value?.abort();
+    context.loadWorker.value?.terminate();
+    context.loadAbortController.value = null;
+    context.loadWorker.value = null;
+    context.loadVersion.value += 1;
+    context.previewTiming.value = { readMs: 0, processMs: 0 };
+    context.urlStore.clear();
+    commitPreview(context, file, extensionOf(file.name), "", mediaPreview(file, "image", url), undefined, fileHandle, null);
+  }
+
+  /**
    * 渲染拥有明确类型的文件。
    * @param file 当前文件。
    * @param ext 文件后缀。
@@ -186,5 +204,5 @@ export function createFilePreviewActions(context: FilePreviewContext) {
     return true;
   }
 
-  return { openFile, saveTextAndRefresh };
+  return { openFile, saveTextAndRefresh, openPreloadedImage };
 }
