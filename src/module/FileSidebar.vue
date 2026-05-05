@@ -132,7 +132,7 @@
         type="button"
         :title="item.name"
         :ref="element => setEntryRef(item.name, element)"
-        :class="['entry', item.kind === 'directory' ? 'folder' : 'file', { active: selectedName === item.name }]"
+        :class="['entry', isContainer(item) ? 'folder' : 'file', { active: selectedName === item.name }]"
         @click="$emit('open-entry', item)"
       >
         <span class="icon"><IconView :name="iconFor(item)" /></span>
@@ -146,7 +146,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUpdate, ref, watch } from "vue";
 import type { GlobalSearchResult, GlobalSearchState, LocalEntry, ReaderIconName } from "../types";
-import { extensionOf, iconFor, iconForExtension, metaFor } from "../utils/fileKind";
+import { extensionOf, iconFor, iconForExtension, isArchiveExtension, metaFor } from "../utils/fileKind";
+
+function isContainer(item: LocalEntry): boolean {
+  return item.kind === "directory" || (item.kind === "file" && isArchiveExtension(extensionOf(item.name)));
+}
 import IconView from "./IconView.vue";
 
 const props = defineProps<{

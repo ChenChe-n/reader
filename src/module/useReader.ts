@@ -71,23 +71,24 @@ export function useReader() {
   const imageEntries = computed(() =>
     entries.value.filter(item => item.kind === "file" && isImageExtension(extensionOf(item.name)))
   );
-  const fileEntries = computed(() =>
-    entries.value.filter(item => item.kind === "file")
-  );
   const currentImageIndex = computed(() =>
     preview.kind === "media" && preview.mediaKind === "image"
       ? imageEntries.value.findIndex(item => item.name === selectedName.value)
       : -1
   );
-  const currentFileIndex = computed(() =>
-    fileEntries.value.findIndex(item => item.name === selectedName.value)
+  const currentEntryIndex = computed(() =>
+    entries.value.findIndex(item => item.name === selectedName.value)
   );
   const imageCount = computed(() => imageEntries.value.length);
   const imagePosition = computed(() => (currentImageIndex.value >= 0 ? currentImageIndex.value + 1 : 0));
   const canOpenPreviousImage = computed(() => currentImageIndex.value > 0);
   const canOpenNextImage = computed(() => currentImageIndex.value >= 0 && currentImageIndex.value < imageEntries.value.length - 1);
-  const canOpenPreviousEntry = computed(() => currentFileIndex.value > 0);
-  const canOpenNextEntry = computed(() => currentFileIndex.value >= 0 && currentFileIndex.value < fileEntries.value.length - 1);
+  const canOpenPreviousEntry = computed(() => currentEntryIndex.value > 0);
+  const canOpenNextEntry = computed(() => currentEntryIndex.value >= 0 && currentEntryIndex.value < entries.value.length - 1);
+  const selectedEntryIsContainer = computed(() => {
+    const entry = entries.value[currentEntryIndex.value];
+    return Boolean(entry && (entry.kind === "directory" || isArchiveFileName(entry.name)));
+  });
   const imageWindowCache = new Map<string, CachedImage>();
   let imageWindowToken = 0;
 
@@ -405,14 +406,30 @@ export function useReader() {
   }
 
   /**
-   * 打开当前目录中的相邻文件（任意类型）。
+   * 打开当前目录中的相邻条目。
+   * 容器类型（目录/压缩包）仅选中不进入，普通文件直接打开。
    * @param offset 相邻偏移，-1 表示上一个，1 表示下一个。
    * @returns 异步完成信号。
    */
   async function openSiblingEntry(offset: -1 | 1): Promise<void> {
-    const next = fileEntries.value[currentFileIndex.value + offset];
-    if (!next || next.kind !== "file") return;
-    await openEntry(next);
+    const next = entries.value[currentEntryIndex.value + offset];
+    if (!next) return;
+    selectedName.value = next.name;
+    if (next.kind === "directory" || isArchiveFileName(next.name)) {
+      rememberSession();
+      return;
+    }
+    await openFileAndRemember(next.name, next.handle as FileSystemFileHandleLike);
+  }
+
+  /**
+   * 打开当前选中的容器条目（目录或压缩包）。
+   * @returns 异步完成信号。
+   */
+  async function openSelectedEntry(): Promise<void> {
+    const entry = entries.value[currentEntryIndex.value];
+    if (!entry) return;
+    await openEntry(entry);
   }
 
   /**
@@ -571,6 +588,7 @@ export function useReader() {
     canOpenNextImage,
     canOpenPreviousEntry,
     canOpenNextEntry,
+    selectedEntryIsContainer,
     selectedName,
     searchKeyword,
     currentFile,
@@ -615,6 +633,7 @@ export function useReader() {
     openNextImage: () => openSiblingImage(1),
     openPreviousEntry: () => openSiblingEntry(-1),
     openNextEntry: () => openSiblingEntry(1),
+    openSelectedEntry,
     createObjectUrl: urlStore.create,
     resolveConfirmDialog
   };

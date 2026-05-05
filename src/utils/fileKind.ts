@@ -24,6 +24,8 @@ const ARCHIVE_EXTENSIONS = [
   "iso"
 ];
 
+export { ARCHIVE_EXTENSIONS };
+
 /**
  * 获取文件名后缀的小写形式。
  * @param name 文件名。
@@ -67,7 +69,10 @@ export function iconForExtension(ext: string): ReaderIconName {
  * @returns 元信息文本。
  */
 export function metaFor(item: LocalEntry): string {
-  return item.kind === "directory" ? "文件夹" : extensionOf(item.name).toUpperCase() || "文件";
+  if (item.kind === "directory") return "文件夹";
+  const ext = extensionOf(item.name);
+  if (isArchiveExtension(ext)) return "压缩包";
+  return ext.toUpperCase() || "文件";
 }
 
 /**
@@ -171,6 +176,10 @@ export function isImageFile(file: File, ext: string): boolean {
  */
 export function isImageExtension(ext: string): boolean {
   return IMAGE_EXTENSIONS.includes(ext);
+}
+
+export function isArchiveExtension(ext: string): boolean {
+  return ARCHIVE_EXTENSIONS.includes(ext);
 }
 
 /**

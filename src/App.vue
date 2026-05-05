@@ -130,6 +130,7 @@ const {
   canOpenNextImage,
   canOpenPreviousEntry,
   canOpenNextEntry,
+  selectedEntryIsContainer,
   editLineMode,
   htmlPreviewMode,
   imageDisplayMode,
@@ -165,6 +166,7 @@ const {
   openNextImage,
   openPreviousEntry,
   openNextEntry,
+  openSelectedEntry,
   createObjectUrl,
   resolveConfirmDialog
 } = reader;
@@ -224,10 +226,22 @@ function handleReaderKeydown(event: KeyboardEvent): void {
     void openNextEntry();
     return;
   }
-  if (event.key === "ArrowLeft" || event.key === "Backspace") {
+  if (event.key === "ArrowLeft") {
     if (!canOpenPreviousEntry.value) return;
     event.preventDefault();
     void openPreviousEntry();
+    return;
+  }
+  if (event.key === "Enter") {
+    if (!selectedEntryIsContainer.value) return;
+    event.preventDefault();
+    void openSelectedEntry();
+    return;
+  }
+  if (event.key === "Backspace") {
+    if (!canGoUp.value) return;
+    event.preventDefault();
+    void goUp();
   }
 }
 

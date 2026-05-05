@@ -1,4 +1,5 @@
 import type { FileSystemDirectoryHandleLike, LocalEntry, RelativeFileResult } from "../types";
+import { extensionOf, isArchiveExtension } from "../utils/fileKind";
 
 /**
  * 打开本地目录选择器。
@@ -125,14 +126,24 @@ export function shouldResolveLocalResource(value: string | null | undefined): bo
 }
 
 /**
- * 按目录优先比较条目。
+ * 按目录优先比较条目（目录和压缩包混排）。
  * @param left 左侧条目。
  * @param right 右侧条目。
  * @returns 排序比较值。
  */
 function compareEntry(left: LocalEntry, right: LocalEntry): number {
   if (left.kind !== right.kind) return left.kind === "directory" ? -1 : 1;
+  if (isContainerEntry(left) !== isContainerEntry(right)) return isContainerEntry(left) ? -1 : 1;
   return left.name.localeCompare(right.name, "zh-Hans-CN", { numeric: true, sensitivity: "base" });
+}
+
+/**
+ * 判断条目是否为容器类型（目录或压缩包）。
+ * @param entry 目录条目。
+ * @returns 是否为容器。
+ */
+function isContainerEntry(entry: LocalEntry): boolean {
+  return entry.kind === "directory" || (entry.kind === "file" && isArchiveExtension(extensionOf(entry.name)));
 }
 
 /**
