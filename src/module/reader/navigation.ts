@@ -30,7 +30,6 @@ export function createNavigationActions(context: ReaderNavigationContext) {
     context.directoryTrail.value.push(item.handle as FileSystemDirectoryHandleLike);
     context.searchKeyword.value = "";
     await context.loadDirectory(item.handle as FileSystemDirectoryHandleLike);
-    context.showEmpty(`当前目录：${item.name}`, "选择文件进行预览，或继续进入子文件夹。");
   }
 
   /**
@@ -44,7 +43,6 @@ export function createNavigationActions(context: ReaderNavigationContext) {
     const handle = context.directoryTrail.value[context.directoryTrail.value.length - 1] || context.rootHandle.value;
     resetDirectorySelection();
     await context.loadDirectory(handle);
-    context.showEmpty("已返回上一级", "选择左侧文件进行预览。");
   }
 
   /**
@@ -57,7 +55,6 @@ export function createNavigationActions(context: ReaderNavigationContext) {
     context.directoryTrail.value = [context.rootHandle.value];
     resetDirectorySelection();
     await context.loadDirectory(context.rootHandle.value);
-    context.showEmpty("已回到根目录", "选择左侧文件进行预览。");
   }
 
   /**

@@ -69,10 +69,7 @@ export function createSessionActions(context: SessionActionsContext) {
    * @returns 异步完成信号。
    */
   async function restoreSessionFile(fileName: string, directory: FileSystemDirectoryHandleLike): Promise<void> {
-    if (!fileName) {
-      context.showEmpty("已恢复上次目录", "选择左侧文件进行预览。");
-      return;
-    }
+    if (!fileName) return;
     const fileHandle = await directory.getFileHandle(fileName);
     await context.openPreviewFile(fileName, fileHandle);
   }

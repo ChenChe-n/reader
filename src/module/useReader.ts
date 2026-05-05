@@ -161,18 +161,6 @@ export function useReader() {
     void preloadImageWindow();
   });
 
-  watch([entries, selectedName], ([list, name]) => {
-    if (!list.length) return;
-    if (list.some(e => e.name === name)) return;
-    const first = list[0];
-    selectedName.value = first.name;
-    if (first.kind === "directory" || isArchiveFileName(first.name)) {
-      rememberSession();
-      return;
-    }
-    void openFileAndRemember(first.name, first.handle as FileSystemFileHandleLike);
-  });
-
   const navigation = createNavigationActions({
     rootHandle,
     directoryTrail,
@@ -211,7 +199,6 @@ export function useReader() {
       stack.value = [handle.name || "本地目录"];
       await loadDirectory(handle);
       rememberSession();
-      showEmpty("选择左侧文件进行预览", "文本、PDF、Office、PSD、图片、音频、视频和可解码文件会在右侧显示。");
     } catch (error) {
       if ((error as Error).name !== "AbortError") showNotice(`无法打开目录：${(error as Error).message}`);
     }
@@ -227,6 +214,23 @@ export function useReader() {
     clearImageWindow();
     entries.value = await readDirectory(handle);
     currentHandle.value = handle;
+    autoSelectFirstEntry();
+  }
+
+  /**
+   * 进入新目录后自动选中第一项：容器仅选中，普通文件直接打开。
+   * @returns 无返回值。
+   */
+  function autoSelectFirstEntry(): void {
+    if (!entries.value.length) return;
+    if (entries.value.some(e => e.name === selectedName.value)) return;
+    const first = entries.value[0];
+    selectedName.value = first.name;
+    if (first.kind === "directory" || isArchiveFileName(first.name)) {
+      rememberSession();
+      return;
+    }
+    void openFileAndRemember(first.name, first.handle as FileSystemFileHandleLike);
   }
 
   /**
@@ -262,8 +266,6 @@ export function useReader() {
       stack.value = [rootHandle.value?.name || stack.value[0] || "本地目录", ...result.pathParts];
       directoryTrail.value = [...result.directoryTrail, result.handle as FileSystemDirectoryHandleLike];
       await loadDirectory(result.handle as FileSystemDirectoryHandleLike);
-      selectedName.value = "";
-      showEmpty(`当前目录：${result.name}`, "选择文件进行预览，或继续进入子文件夹。");
       return;
     }
     stack.value = [rootHandle.value?.name || stack.value[0] || "本地目录", ...result.directoryPath];
@@ -309,7 +311,6 @@ export function useReader() {
       searchKeyword.value = "";
       selectedName.value = "";
       await loadDirectory(archiveHandle);
-      showEmpty(`压缩包：${item.name}`, "选择压缩包内文件进行预览，或继续进入子文件夹。");
     } catch (error) {
       showNotice(`无法打开压缩包：${(error as Error).message}`);
     }
