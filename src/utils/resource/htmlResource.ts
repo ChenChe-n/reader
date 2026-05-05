@@ -56,7 +56,6 @@ function ensureDoctype(text: string): string {
  * @returns 无返回值。
  */
 function removeExecutableContent(doc: Document): void {
-  doc.querySelectorAll("script").forEach(element => element.remove());
   doc.querySelectorAll("*").forEach(element => {
     for (const attribute of Array.from(element.attributes)) {
       const name = attribute.name.toLowerCase();
