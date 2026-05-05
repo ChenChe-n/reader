@@ -161,6 +161,18 @@ export function useReader() {
     void preloadImageWindow();
   });
 
+  watch([entries, selectedName], ([list, name]) => {
+    if (!list.length) return;
+    if (list.some(e => e.name === name)) return;
+    const first = list[0];
+    selectedName.value = first.name;
+    if (first.kind === "directory" || isArchiveFileName(first.name)) {
+      rememberSession();
+      return;
+    }
+    void openFileAndRemember(first.name, first.handle as FileSystemFileHandleLike);
+  });
+
   const navigation = createNavigationActions({
     rootHandle,
     directoryTrail,
