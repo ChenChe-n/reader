@@ -10,8 +10,13 @@
         :has-root="Boolean(rootHandle)"
         :has-current-directory="Boolean(currentHandle)"
         :can-go-up="canGoUp"
+        :global-search="globalSearch"
         @open-directory="openDirectory"
         @open-entry="openEntry"
+        @open-global-result="openGlobalSearchResult"
+        @start-global-search="startGlobalSearch"
+        @cancel-global-search="cancelGlobalSearch"
+        @clear-global-search="clearGlobalSearch"
         @reload="loadDirectory(currentHandle)"
         @home="goHome"
         @go-up="goUp"
@@ -36,6 +41,7 @@
         :file-meta="fileMeta"
         :preview-timing="previewTiming"
         :has-text="Boolean(currentText)"
+        :current-text="currentText"
         :has-file="Boolean(currentFile)"
         :can-save="canSave"
         :can-edit-preview="canEditPreview"
@@ -52,6 +58,8 @@
         :base-path-parts="currentFileDirectoryPath"
         :create-object-url="createObjectUrl"
         :edit-line-mode="editLineMode"
+        :jump-line-request="{ line: pendingPreviewLineJump, token: pendingPreviewLineJumpToken }"
+        :preview-scroll-key="previewScrollKey"
         @copy="copyCurrentText"
         @download="downloadCurrentFile"
         @save="saveDraft"
@@ -81,6 +89,7 @@
       @reset-custom="resetCustomTheme"
       @close="themePanelVisible = false"
     />
+    <TooltipLayer />
   </div>
 </template>
 
@@ -93,6 +102,7 @@ import ConfirmDialog from "./module/ConfirmDialog.vue";
 import FileSidebar from "./module/FileSidebar.vue";
 import PreviewPane from "./module/PreviewPane.vue";
 import ThemePanel from "./module/ThemePanel.vue";
+import TooltipLayer from "./module/TooltipLayer.vue";
 
 const reader = useReader();
 const theme = useThemeState();
@@ -123,6 +133,9 @@ const {
   imageDisplayMode,
   currentHandle,
   currentFileDirectoryPath,
+  pendingPreviewLineJump,
+  pendingPreviewLineJumpToken,
+  globalSearch,
   preview,
   fileTitle,
   fileMeta,
@@ -142,6 +155,10 @@ const {
   togglePreviewEdit,
   toggleHtmlPreviewMode,
   setImageDisplayMode,
+  startGlobalSearch,
+  cancelGlobalSearch,
+  clearGlobalSearch,
+  openGlobalSearchResult,
   openPreviousImage,
   openNextImage,
   createObjectUrl,
@@ -158,6 +175,13 @@ const {
   startResize
 } = useResponsiveLayout();
 const canGoUp = computed(() => Boolean(rootHandle.value && pathLabel.value.split("/").filter(Boolean).length > 1));
+const previewScrollKey = computed(() => {
+  if (currentFile.value) {
+    const path = [...currentFileDirectoryPath.value, currentFile.value.name].join("/");
+    return `${preview.kind}:${path}`;
+  }
+  return `${preview.kind}:${fileTitle.value}`;
+});
 
 /**
  * 打开相对文件并按 hash 滚动。
