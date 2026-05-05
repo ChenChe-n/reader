@@ -85,7 +85,7 @@
       <iframe
         v-else-if="preview.kind === 'html'"
         class="html-frame"
-        :src="htmlPreviewUrl"
+        :srcdoc="htmlPreviewContent"
         :sandbox="preview.sandbox || iframeSandbox"
         title="HTML 预览"
       ></iframe>
@@ -238,7 +238,7 @@ const markdownRef = ref<HTMLElement | null>(null);
 const lineViewerRef = ref<InstanceType<typeof LineTextViewer> | null>(null);
 const lineEditorRef = ref<InstanceType<typeof LineTextEditor> | null>(null);
 const searchInputRef = ref<HTMLInputElement | null>(null);
-const htmlPreviewUrl = ref("about:blank");
+const htmlPreviewContent = ref("");
 const searchPanelOpen = ref(false);
 const searchKeyword = ref("");
 const activeSearchIndex = ref(-1);
@@ -471,14 +471,12 @@ function handlePreviewMessage(event: MessageEvent): void {
   if (!isAnchorOnly(data.href) && shouldResolveLocalResource(data.href)) emit("open-relative", data.href);
 }
 
-function setHtmlPreviewUrl(html: string): void {
-  revokeHtmlPreviewUrl();
-  htmlPreviewUrl.value = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+function setHtmlPreviewContent(html: string): void {
+  htmlPreviewContent.value = html;
 }
 
-function clearHtmlPreviewUrl(): void {
-  revokeHtmlPreviewUrl();
-  htmlPreviewUrl.value = "about:blank";
+function clearHtmlPreviewContent(): void {
+  htmlPreviewContent.value = "";
 }
 
 function clearMarkdownSearchMarks(): void {
@@ -524,10 +522,6 @@ function applyMarkdownSearchMarks(): void {
     if (cursor < text.length) fragment.append(document.createTextNode(text.slice(cursor)));
     node.replaceWith(fragment);
   });
-}
-
-function revokeHtmlPreviewUrl(): void {
-  if (htmlPreviewUrl.value.startsWith("blob:")) URL.revokeObjectURL(htmlPreviewUrl.value);
 }
 
 watch(
@@ -585,10 +579,10 @@ watch(
   () => (props.preview.kind === "html" && !props.previewEditing ? props.preview.html || "" : ""),
   async html => {
     if (props.preview.kind !== "html" || props.previewEditing) {
-      clearHtmlPreviewUrl();
+      clearHtmlPreviewContent();
       return;
     }
-    setHtmlPreviewUrl(await rewriteHtmlRelativeResources(html, props.rootHandle, props.basePathParts, props.createObjectUrl));
+    setHtmlPreviewContent(await rewriteHtmlRelativeResources(html, props.rootHandle, props.basePathParts, props.createObjectUrl));
   },
   { immediate: true }
 );
@@ -600,6 +594,5 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener("message", handlePreviewMessage);
   window.removeEventListener("keydown", handleSearchShortcut);
-  revokeHtmlPreviewUrl();
 });
 </script>
