@@ -128,6 +128,8 @@ const {
   imagePosition,
   canOpenPreviousImage,
   canOpenNextImage,
+  canOpenPreviousEntry,
+  canOpenNextEntry,
   editLineMode,
   htmlPreviewMode,
   imageDisplayMode,
@@ -161,6 +163,8 @@ const {
   openGlobalSearchResult,
   openPreviousImage,
   openNextImage,
+  openPreviousEntry,
+  openNextEntry,
   createObjectUrl,
   resolveConfirmDialog
 } = reader;
@@ -215,15 +219,15 @@ function handleReaderKeydown(event: KeyboardEvent): void {
   if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey || previewEditing.value) return;
   if (isEditableTarget(event.target)) return;
   if (event.key === "ArrowRight" || event.key === " ") {
-    if (!canOpenNextImage.value) return;
+    if (!canOpenNextEntry.value) return;
     event.preventDefault();
-    void openNextImage();
+    void openNextEntry();
     return;
   }
   if (event.key === "ArrowLeft" || event.key === "Backspace") {
-    if (!canOpenPreviousImage.value) return;
+    if (!canOpenPreviousEntry.value) return;
     event.preventDefault();
-    void openPreviousImage();
+    void openPreviousEntry();
   }
 }
 

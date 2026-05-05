@@ -71,15 +71,23 @@ export function useReader() {
   const imageEntries = computed(() =>
     entries.value.filter(item => item.kind === "file" && isImageExtension(extensionOf(item.name)))
   );
+  const fileEntries = computed(() =>
+    entries.value.filter(item => item.kind === "file")
+  );
   const currentImageIndex = computed(() =>
     preview.kind === "media" && preview.mediaKind === "image"
       ? imageEntries.value.findIndex(item => item.name === selectedName.value)
       : -1
   );
+  const currentFileIndex = computed(() =>
+    fileEntries.value.findIndex(item => item.name === selectedName.value)
+  );
   const imageCount = computed(() => imageEntries.value.length);
   const imagePosition = computed(() => (currentImageIndex.value >= 0 ? currentImageIndex.value + 1 : 0));
   const canOpenPreviousImage = computed(() => currentImageIndex.value > 0);
   const canOpenNextImage = computed(() => currentImageIndex.value >= 0 && currentImageIndex.value < imageEntries.value.length - 1);
+  const canOpenPreviousEntry = computed(() => currentFileIndex.value > 0);
+  const canOpenNextEntry = computed(() => currentFileIndex.value >= 0 && currentFileIndex.value < fileEntries.value.length - 1);
   const imageWindowCache = new Map<string, CachedImage>();
   let imageWindowToken = 0;
 
@@ -397,6 +405,17 @@ export function useReader() {
   }
 
   /**
+   * 打开当前目录中的相邻文件（任意类型）。
+   * @param offset 相邻偏移，-1 表示上一个，1 表示下一个。
+   * @returns 异步完成信号。
+   */
+  async function openSiblingEntry(offset: -1 | 1): Promise<void> {
+    const next = fileEntries.value[currentFileIndex.value + offset];
+    if (!next || next.kind !== "file") return;
+    await openEntry(next);
+  }
+
+  /**
    * 使用图片窗口中的缓存图片。
    * @param entry 目标图片条目。
    * @returns 是否命中窗口缓存。
@@ -550,6 +569,8 @@ export function useReader() {
     imagePosition,
     canOpenPreviousImage,
     canOpenNextImage,
+    canOpenPreviousEntry,
+    canOpenNextEntry,
     selectedName,
     searchKeyword,
     currentFile,
@@ -592,6 +613,8 @@ export function useReader() {
     openGlobalSearchResult,
     openPreviousImage: () => openSiblingImage(-1),
     openNextImage: () => openSiblingImage(1),
+    openPreviousEntry: () => openSiblingEntry(-1),
+    openNextEntry: () => openSiblingEntry(1),
     createObjectUrl: urlStore.create,
     resolveConfirmDialog
   };
